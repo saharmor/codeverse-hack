@@ -18,6 +18,16 @@ export default function ResizableLayout() {
   const startLeftRef = useRef<number>(leftWidth)
   const startRightRef = useRef<number>(rightWidth)
 
+  const [windowWidth, setWindowWidth] = useState<number>(typeof window !== 'undefined' ? window.innerWidth : 1200)
+
+  useEffect(() => {
+    const onResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+
+  const showRightPanel = windowWidth >= 900
+
   const onMouseDownLeft = (e: React.MouseEvent) => {
     setDragging('left')
     startXRef.current = e.clientX
@@ -77,7 +87,14 @@ export default function ResizableLayout() {
     }
   }, [dragging])
 
-  const handleClass = 'w-1.5 hover:w-2 transition-all duration-100 bg-gray-200 hover:bg-gray-300 cursor-col-resize h-full'
+  // Wider hotzone with visible center grip for better discoverability
+  const handleContainerClass = 'group relative z-20 w-3 md:w-3.5 h-full touch-none cursor-col-resize hover:bg-gray-100/40 transition-colors'
+  const handleGrip = (
+    <span
+      className="pointer-events-none absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-gray-200 group-hover:w-1.5 group-hover:bg-gray-300 rounded"
+      aria-hidden
+    />
+  )
 
   return (
     <div className={`h-screen w-screen flex overflow-hidden ${dragging ? 'cursor-col-resize select-none' : ''}`}>
@@ -86,26 +103,40 @@ export default function ResizableLayout() {
       </div>
       <div
         role="separator"
+        aria-orientation="vertical"
         aria-label="Resize project sidebar"
+        title="Drag to resize"
         tabIndex={0}
-        className={handleClass}
+        className={handleContainerClass}
+        style={{ cursor: 'col-resize' }}
         onMouseDown={onMouseDownLeft}
         onKeyDown={onKeyResizeLeft}
-      />
-      <div className="flex-1 min-w-0 min-h-0 h-full flex">
-        <ChatWindow />
+      >
+        {handleGrip}
       </div>
-      <div
-        role="separator"
-        aria-label="Resize task output panel"
-        tabIndex={0}
-        className={handleClass}
-        onMouseDown={onMouseDownRight}
-        onKeyDown={onKeyResizeRight}
-      />
-      <div style={{ width: rightWidth }} className="shrink-0 h-full">
+      <div className="flex-1 min-w-0 min-h-0 h-full flex">
         <TaskOutputPanel />
       </div>
+      {showRightPanel && (
+        <>
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize chat panel"
+            title="Drag to resize"
+            tabIndex={0}
+            className={handleContainerClass}
+            style={{ cursor: 'col-resize' }}
+            onMouseDown={onMouseDownRight}
+            onKeyDown={onKeyResizeRight}
+          >
+            {handleGrip}
+          </div>
+          <div style={{ width: rightWidth }} className="shrink-0 h-full flex min-h-0 items-stretch">
+            <ChatWindow />
+          </div>
+        </>
+      )}
     </div>
   )
 }

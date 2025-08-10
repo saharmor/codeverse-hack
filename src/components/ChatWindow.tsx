@@ -17,16 +17,9 @@ function Avatar({ role }: { role: 'user' | 'assistant' }) {
 export default function ChatWindow() {
   const { chatMessages, sendMessage } = useAppContext()
   const [input, setInput] = useState('')
-  const [queued, setQueued] = useState<string | null>(null)
   const [voiceBusy, setVoiceBusy] = useState(false)
   const [inlineRecording, setInlineRecording] = useState(false)
   const scrollRef = useRef<HTMLDivElement | null>(null)
-
-  const suggestions = useMemo(() => [
-    'What are the key tasks to start with?',
-    'Generate a high-level architecture plan',
-    'List risks and open questions',
-  ], [])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -38,7 +31,6 @@ export default function ChatWindow() {
     if (!input.trim()) return
     sendMessage(input)
     setInput('')
-    setQueued(null)
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -60,7 +52,7 @@ export default function ChatWindow() {
   }
 
   return (
-    <section className="flex-1 min-w-0 h-full flex flex-col bg-white" role="main">
+    <section className="w-full h-full min-h-0 flex flex-col bg-white border-l border-gray-100" role="complementary">
       {/* Header */}
       <header className="shrink-0 border-b border-gray-100 px-4 py-3 flex items-center justify-between">
         <h2 className="text-sm font-medium text-gray-900">Hello There - Canvas</h2>
@@ -84,20 +76,6 @@ export default function ChatWindow() {
             {m.role === 'user' && <Avatar role="user" />}
           </div>
         ))}
-
-        {/* Clarifying questions */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {suggestions.map((s, idx) => (
-            <button
-              key={idx}
-              onClick={() => { setQueued(s); setInput(s) }}
-              className={`text-left rounded-xl border border-gray-200 bg-gray-50 hover:bg-gray-100 transition-colors px-3 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500`}
-              aria-label={`Use suggestion: ${s}`}
-            >
-              <p className="text-xs text-gray-700">{s}</p>
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Footer */}
