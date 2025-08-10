@@ -59,7 +59,8 @@ install-dev: $(VENV_NAME)
 
 # Format code with Black and isort
 format: $(VENV_NAME)
-	$(VENV_BIN)/black .
+	# Limit formatting to project sources; rely on pyproject excludes for safety
+	$(VENV_BIN)/black main.py config.py database.py models schemas.py setup_db.py run.py
 	$(VENV_BIN)/isort .
 
 # Run linting checks

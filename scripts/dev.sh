@@ -14,6 +14,14 @@ cleanup() {
 # Set trap to cleanup on script exit
 trap cleanup SIGINT SIGTERM
 
+# Load environment from repo .env if present
+if [ -f .env ]; then
+  echo "📦 Loading .env from repo root"
+  set -a
+  source .env
+  set +a
+fi
+
 # Start backend
 echo "🐍 Starting FastAPI backend..."
 cd backend
@@ -23,6 +31,13 @@ if [ ! -d "venv" ]; then
 fi
 
 source venv/bin/activate
+# Load backend-specific .env if present
+if [ -f .env ]; then
+  echo "📦 Loading backend/.env"
+  set -a
+  source .env
+  set +a
+fi
 python run.py &
 BACKEND_PID=$!
 cd ..
@@ -52,4 +67,4 @@ echo ""
 echo "Press Ctrl+C to stop all services"
 
 # Wait for user to stop
-wait 
+wait

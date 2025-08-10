@@ -11,39 +11,19 @@ import sys
 from typing import AsyncGenerator, Optional
 
 try:
-    from claude_code_sdk import (
-        ClaudeCodeOptions,
-        query,
-    )
+    from claude_code_sdk import ClaudeCodeOptions, query
 except Exception:  # pragma: no cover
     print(
-        "Error: Failed to import 'claude_code_sdk'.\nInstall it with: pip install claude-code-sdk",
+        ("Error: Failed to import 'claude_code_sdk'.\n" "Install it with: pip install claude-code-sdk"),
         file=sys.stderr,
     )
     raise
 
 
-SYSTEM_PROMPT = """
-You are **Claude Code**, an AI agent assistant specialized in helping developers draft high-quality implementation plans. Given the user's raw notes below, your output must include two sections:
-
----
-
-## 1. **Plan Draft** (in Markdown)
-- Produce a clear, organized outline breaking down the development into modules or tasks.
-- Include structure, key steps, dependencies, technology stack, code architecture, and testing strategy.
-- Use a **plan-and-solve** approach: first outline the overall plan, then optionally detail sub-steps.
-
-## 2. **Clarifying Questions**
-- List any important missing information that would impact the plan's accuracy.
-- Focus on user experience, feature edge cases, data inputs/outputs, integration requirements, constraints, or any ambiguity.
-
-**Instructions:**
-1. Provide a transparent, simple plan first, then details.
-2. Avoid assumptions—list uncertainties in clarifying questions.
-3. No more than 8 clarifying questions so choose the best ones.
-4. Treat this as a *draft* to be reviewed and improved collaboratively with the user.
-5. Do not use emojis in your response!
-"""
+SYSTEM_PROMPT = (
+    "You are Claude Code, an assistant helping developers draft plans. "
+    "Provide a simple outline first, then details, and list up to 8 clarifying questions."
+)
 
 
 async def _query_claude_stream(
@@ -101,5 +81,3 @@ async def generate_plan(
         prompt=user_raw_notes,
     ):
         yield chunk
-
-

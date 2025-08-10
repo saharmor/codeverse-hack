@@ -5,7 +5,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # Repository schemas
@@ -132,3 +132,16 @@ class ChatSession(ChatSessionBase):
 
     class Config:
         from_attributes = True
+
+
+# Transcription schemas
+class TranscribeRequest(BaseModel):
+    plan_id: str
+    audio_wav_base64: str = Field(..., description="Base64-encoded WAV audio, <= 60 s, <= 10 MB")
+
+
+class TranscribeResponse(BaseModel):
+    raw_text: str
+    corrected_text: str | None = None
+    confidence: float | None = None
+    vocab_hit_rate: float = 0.0
