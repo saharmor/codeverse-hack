@@ -1,10 +1,12 @@
 """
 Pydantic schemas for API request/response models
 """
-from pydantic import BaseModel
-from typing import List, Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
+from typing import Any, Dict, List, Optional
+
+from pydantic import BaseModel
+
 
 # Repository schemas
 class RepositoryBase(BaseModel):
@@ -13,14 +15,17 @@ class RepositoryBase(BaseModel):
     git_url: Optional[str] = None
     default_branch: str = "main"
 
+
 class RepositoryCreate(RepositoryBase):
     pass
+
 
 class RepositoryUpdate(BaseModel):
     name: Optional[str] = None
     path: Optional[str] = None
     git_url: Optional[str] = None
     default_branch: Optional[str] = None
+
 
 class Repository(RepositoryBase):
     id: str
@@ -30,12 +35,14 @@ class Repository(RepositoryBase):
     class Config:
         from_attributes = True
 
+
 # Plan schemas
 class PlanStatus(str, Enum):
     DRAFT = "draft"
     ACTIVE = "active"
     COMPLETED = "completed"
     ARCHIVED = "archived"
+
 
 class PlanBase(BaseModel):
     name: str
@@ -44,14 +51,17 @@ class PlanBase(BaseModel):
     version: int = 1
     status: PlanStatus = PlanStatus.DRAFT
 
+
 class PlanCreate(PlanBase):
     repository_id: str
+
 
 class PlanUpdate(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
     target_branch: Optional[str] = None
     status: Optional[PlanStatus] = None
+
 
 class Plan(PlanBase):
     id: str
@@ -62,18 +72,22 @@ class Plan(PlanBase):
     class Config:
         from_attributes = True
 
+
 # Plan Artifact schemas
 class ArtifactType(str, Enum):
     FEATURE_PLAN = "feature_plan"
     IMPLEMENTATION_STEPS = "implementation_steps"
     CODE_CHANGES = "code_changes"
 
+
 class PlanArtifactBase(BaseModel):
     content: Dict[str, Any]
     artifact_type: ArtifactType
 
+
 class PlanArtifactCreate(PlanArtifactBase):
     plan_id: str
+
 
 class PlanArtifact(PlanArtifactBase):
     id: str
@@ -83,26 +97,32 @@ class PlanArtifact(PlanArtifactBase):
     class Config:
         from_attributes = True
 
+
 # Chat Session schemas
 class ChatStatus(str, Enum):
     ACTIVE = "active"
     COMPLETED = "completed"
+
 
 class ChatMessage(BaseModel):
     role: str  # "user" or "assistant"
     content: str
     timestamp: Optional[datetime] = None
 
+
 class ChatSessionBase(BaseModel):
     messages: List[ChatMessage] = []
     status: ChatStatus = ChatStatus.ACTIVE
 
+
 class ChatSessionCreate(ChatSessionBase):
     plan_id: str
+
 
 class ChatSessionUpdate(BaseModel):
     messages: Optional[List[ChatMessage]] = None
     status: Optional[ChatStatus] = None
+
 
 class ChatSession(ChatSessionBase):
     id: str

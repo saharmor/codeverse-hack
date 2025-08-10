@@ -2,15 +2,17 @@
 """
 API endpoint testing script
 """
-import requests
 import json
 import time
 
+import requests
+
 BASE_URL = "http://localhost:8000"
+
 
 def test_api_endpoints():
     print("Testing CodeVerse API endpoints...")
-    
+
     # Test health endpoint
     print("\n1. Testing health endpoint...")
     response = requests.get(f"{BASE_URL}/health")
@@ -20,13 +22,13 @@ def test_api_endpoints():
     else:
         print(f"❌ Health check failed: {response.status_code}")
         return False
-    
+
     # Create repository
     print("\n2. Testing repository creation...")
     repo_data = {
         "name": "codeverse-app",
         "path": "/Users/galw/Git/innovation/codeverse-hack",
-        "git_url": "https://github.com/user/codeverse-app.git"
+        "git_url": "https://github.com/user/codeverse-app.git",
     }
     response = requests.post(f"{BASE_URL}/api/repositories", json=repo_data)
     if response.status_code == 200:
@@ -39,7 +41,7 @@ def test_api_endpoints():
         print(f"❌ Repository creation failed: {response.status_code}")
         print(response.text)
         return False
-    
+
     # Get all repositories
     print("\n3. Testing get repositories...")
     response = requests.get(f"{BASE_URL}/api/repositories")
@@ -50,7 +52,7 @@ def test_api_endpoints():
     else:
         print(f"❌ Get repositories failed: {response.status_code}")
         return False
-    
+
     # Create plan
     print("\n4. Testing plan creation...")
     plan_data = {
@@ -59,7 +61,7 @@ def test_api_endpoints():
         "description": "Add user authentication to the app",
         "target_branch": "feature/auth",
         "version": 1,
-        "status": "draft"
+        "status": "draft",
     }
     response = requests.post(f"{BASE_URL}/api/repositories/{repo_id}/plans", json=plan_data)
     if response.status_code == 200:
@@ -72,7 +74,7 @@ def test_api_endpoints():
         print(f"❌ Plan creation failed: {response.status_code}")
         print(response.text)
         return False
-    
+
     # Get plans for repository
     print("\n5. Testing get plans for repository...")
     response = requests.get(f"{BASE_URL}/api/repositories/{repo_id}/plans")
@@ -83,7 +85,7 @@ def test_api_endpoints():
     else:
         print(f"❌ Get plans failed: {response.status_code}")
         return False
-    
+
     # Create plan artifact
     print("\n6. Testing plan artifact creation...")
     artifact_data = {
@@ -94,12 +96,12 @@ def test_api_endpoints():
                 "Design user model",
                 "Implement login/logout endpoints",
                 "Add password hashing",
-                "Create frontend login form"
+                "Create frontend login form",
             ],
             "estimated_time": "5 days",
-            "dependencies": ["database", "frontend framework"]
+            "dependencies": ["database", "frontend framework"],
         },
-        "artifact_type": "feature_plan"
+        "artifact_type": "feature_plan",
     }
     response = requests.post(f"{BASE_URL}/api/plans/{plan_id}/artifacts", json=artifact_data)
     if response.status_code == 200:
@@ -112,16 +114,19 @@ def test_api_endpoints():
         print(f"❌ Plan artifact creation failed: {response.status_code}")
         print(response.text)
         return False
-    
+
     # Create chat session
     print("\n7. Testing chat session creation...")
     chat_data = {
         "plan_id": plan_id,
         "messages": [
             {"role": "user", "content": "I need help implementing authentication"},
-            {"role": "assistant", "content": "I can help you with that! Let's start by choosing an authentication strategy."}
+            {
+                "role": "assistant",
+                "content": "I can help you with that! Let's start by choosing an authentication strategy.",
+            },
         ],
-        "status": "active"
+        "status": "active",
     }
     response = requests.post(f"{BASE_URL}/api/plans/{plan_id}/chat", json=chat_data)
     if response.status_code == 200:
@@ -134,22 +139,25 @@ def test_api_endpoints():
         print(f"❌ Chat session creation failed: {response.status_code}")
         print(response.text)
         return False
-    
+
     print("\n🎉 All API tests passed successfully!")
-    print(f"""
+    print(
+        f"""
 Summary:
 - Repository ID: {repo_id}
 - Plan ID: {plan_id}
 - Artifact ID: {artifact_id}
 - Chat ID: {chat_id}
-""")
+"""
+    )
     return True
+
 
 if __name__ == "__main__":
     # Wait a moment for server to be ready
     print("Waiting for server to be ready...")
     time.sleep(2)
-    
+
     try:
         success = test_api_endpoints()
         exit(0 if success else 1)
