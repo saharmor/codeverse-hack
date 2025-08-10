@@ -37,11 +37,7 @@ export default function ChatWindow() {
     setInput('')
   }
 
-  // Test function to demonstrate loading animation
-  const testLoading = () => {
-    // Simulate loading state for demo purposes
-    // In real usage, this would be handled by the generatePlan function
-  }
+
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
