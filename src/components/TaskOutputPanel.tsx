@@ -2,41 +2,113 @@
 
 import React, { useMemo } from 'react'
 import { useAppContext } from '../lib/AppContext'
+import MarkdownEditor from './MarkdownEditor'
 
 function ArtifactViewer({ artifact }: { artifact: any }) {
   const type = artifact.artifactType || artifact.artifact_type
   const content = artifact.content || {}
 
+  // Handle plan_version type (from PlanVersion model)
+  if (type === 'plan_version') {
+    // Try to extract text content from various possible structures
+    let textContent = ''
+    
+    if (typeof content === 'string') {
+      textContent = content
+    } else if (content.text) {
+      textContent = content.text
+    } else if (content.markdown) {
+      textContent = content.markdown
+    } else if (content.plan) {
+      textContent = typeof content.plan === 'string' ? content.plan : JSON.stringify(content.plan, null, 2)
+    } else if (content.content) {
+      textContent = typeof content.content === 'string' ? content.content : JSON.stringify(content.content, null, 2)
+    } else {
+      // Fallback to showing the whole content as JSON
+      textContent = JSON.stringify(content, null, 2)
+    }
+
+    return (
+      <div className="space-y-4 h-full flex flex-col">
+        {artifact.version && (
+          <div className="text-xs text-gray-500 bg-gray-50 px-3 py-1 rounded-md inline-block">
+            Version {artifact.version}
+          </div>
+        )}
+        <div className="flex-1 min-h-0">
+          <MarkdownEditor 
+            value={textContent}
+            placeholder="Plan content will appear here..."
+            className="h-full"
+          />
+        </div>
+      </div>
+    )
+  }
+
   if (type === 'feature_plan' && (content.text || content.markdown)) {
     return (
-      <article className="prose prose-sm max-w-none">
-        <pre className="whitespace-pre-wrap text-sm">{content.text || content.markdown}</pre>
-      </article>
+      <div className="h-full">
+        <MarkdownEditor 
+          value={content.text || content.markdown}
+          placeholder="Feature plan content will appear here..."
+          className="h-full"
+        />
+      </div>
     )
   }
 
   if (type === 'implementation_steps' && Array.isArray(content.steps)) {
+    // Convert steps array to markdown format
+    const markdownSteps = content.steps.map((s: any, i: number) => {
+      const stepText = typeof s === 'string' ? s : JSON.stringify(s, null, 2)
+      return `${i + 1}. ${stepText}`
+    }).join('\n\n')
+    
     return (
-      <ol className="list-decimal pl-5 space-y-1 text-sm">
-        {content.steps.map((s: any, i: number) => (
-          <li key={i}>{typeof s === 'string' ? s : JSON.stringify(s, null, 2)}</li>
-        ))}
-      </ol>
+      <div className="h-full">
+        <MarkdownEditor 
+          value={markdownSteps}
+          placeholder="Implementation steps will appear here..."
+          className="h-full"
+        />
+      </div>
     )
   }
 
   if (type === 'code_changes' && content.diff) {
+    // Wrap diff in markdown code block for better formatting
+    const diffMarkdown = '```diff\n' + content.diff + '\n```'
+    
     return (
-      <pre className="bg-gray-50 border border-gray-200 rounded-lg p-3 overflow-auto text-xs">
-        <code>{content.diff}</code>
-      </pre>
+      <div className="h-full">
+        <MarkdownEditor 
+          value={diffMarkdown}
+          placeholder="Code changes will appear here..."
+          className="h-full"
+        />
+      </div>
     )
   }
 
+  // Fallback for other content types - display as formatted JSON in markdown
+  const jsonMarkdown = '```json\n' + JSON.stringify(content, null, 2) + '\n```'
+  
   return (
-    <pre className="bg-gray-50 border border-gray-200 rounded-lg p-3 overflow-auto text-xs">
-      <code>{JSON.stringify(content, null, 2)}</code>
-    </pre>
+    <div className="space-y-4 h-full flex flex-col">
+      {artifact.version && (
+        <div className="text-xs text-gray-500 bg-gray-50 px-3 py-1 rounded-md inline-block">
+          Version {artifact.version}
+        </div>
+      )}
+      <div className="flex-1 min-h-0">
+        <MarkdownEditor 
+          value={jsonMarkdown}
+          placeholder="Artifact content will appear here..."
+          className="h-full"
+        />
+      </div>
+    </div>
   )
 }
 
@@ -65,7 +137,12 @@ export default function TaskOutputPanel() {
               {artifacts.map(a => (
                 <li key={a.id}>
                   <div className="w-full text-left rounded-md px-2 py-1.5 text-sm text-gray-800">
-                    <div className="font-medium truncate">{String((a as any).artifactType ?? (a as any).artifact_type).replace(/_/g, ' ')}</div>
+                    <div className="font-medium truncate">
+                      {String((a as any).artifactType ?? (a as any).artifact_type).replace(/_/g, ' ')}
+                      {(a as any).version && (
+                        <span className="ml-1 text-xs text-gray-500">v{(a as any).version}</span>
+                      )}
+                    </div>
                     <div className="text-[10px] text-gray-500 truncate">{new Date((a as any).createdAt ?? (a as any).created_at).toLocaleString()}</div>
                   </div>
                 </li>

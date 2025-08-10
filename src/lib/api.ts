@@ -136,9 +136,14 @@ export class ApiClient {
     return this.request(`/api/plans/${planId}`);
   }
 
-  // Artifacts
+  // Versions (formerly artifacts)
+  async listVersions(planId: string): Promise<ApiResponse<any[]>> {
+    return this.request(`/api/plans/${planId}/versions`);
+  }
+
+  // Keep old method for backwards compatibility
   async listArtifacts(planId: string): Promise<ApiResponse<any[]>> {
-    return this.request(`/api/plans/${planId}/artifacts`);
+    return this.listVersions(planId);
   }
 
   // Chat

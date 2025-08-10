@@ -99,19 +99,23 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     }
     (async () => {
       const [art, chat] = await Promise.all([
-        apiClient.listArtifacts(selectedPlanId),
+        apiClient.listVersions(selectedPlanId),
         apiClient.getPlanChat(selectedPlanId).catch(() => ({ data: null })),
       ])
       if (art.data) {
+        console.log('Raw artifacts/versions data:', art.data)
         const mapped: PlanArtifact[] = art.data.map((a: any) => ({
           id: a.id,
           planId: a.plan_id,
           content: a.content,
-          artifactType: a.artifact_type,
+          artifactType: a.artifact_type || 'plan_version', // fallback for versions
           createdAt: a.created_at,
+          version: a.version, // add version field from PlanVersion model
         }))
+        console.log('Mapped artifacts:', mapped)
         setArtifacts(mapped)
       } else {
+        console.log('No artifacts/versions data received')
         setArtifacts([])
       }
       if (chat.data) {
@@ -238,11 +242,44 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     let assistantResponse = ''
     const assistantMsgId = `assistant-${Date.now()}`
 
+    // Get current plan artifact content as string
+    const currentPlanArtifact = artifacts.length > 0 
+      ? artifacts.slice().sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))[0]
+      : null
+    
+    let planArtifactString = ''
+    if (currentPlanArtifact?.content) {
+      const content = currentPlanArtifact.content
+      // Extract text content from various possible structures
+      if (typeof content === 'string') {
+        planArtifactString = content
+      } else if (content.text) {
+        planArtifactString = content.text
+      } else if (content.markdown) {
+        planArtifactString = content.markdown
+      } else if (content.plan) {
+        planArtifactString = typeof content.plan === 'string' ? content.plan : JSON.stringify(content.plan, null, 2)
+      } else if (content.content) {
+        planArtifactString = typeof content.content === 'string' ? content.content : JSON.stringify(content.content, null, 2)
+      } else {
+        // Fallback to JSON string
+        planArtifactString = JSON.stringify(content, null, 2)
+      }
+    }
+
+    console.log('Sending plan generation request with:', {
+      user_message: trimmed,
+      plan_artifact_length: planArtifactString.length,
+      plan_artifact_preview: planArtifactString.substring(0, 200) + (planArtifactString.length > 200 ? '...' : ''),
+      chat_messages_count: chatMessages.length
+    })
+
     // Start streaming plan generation
     const cleanup = apiClient.generatePlan(
       selectedPlanId,
       {
         user_message: trimmed,
+        plan_artifact: planArtifactString, // Send as string
         chat_messages: chatMessages.map(msg => ({
           role: msg.role,
           content: msg.content

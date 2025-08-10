@@ -123,17 +123,4 @@ async def delete_plan(plan_id: str, db: AsyncSession = Depends(get_db)):
     return {"message": "Plan deleted successfully"}
 
 
-@router.get("/plans/{plan_id}/versions", response_model=List[PlanSchema])
-async def get_plan_versions(plan_id: str, db: AsyncSession = Depends(get_db)):
-    # Get the plan first to find repository_id and name
-    result = await db.execute(select(Plan).where(Plan.id == plan_id))
-    plan = result.scalar_one_or_none()
-    if not plan:
-        raise HTTPException(status_code=404, detail="Plan not found")
 
-    # Get all versions of this plan
-    result = await db.execute(
-        select(Plan).where(Plan.repository_id == plan.repository_id, Plan.name == plan.name).order_by(Plan.version)
-    )
-    versions = result.scalars().all()
-    return versions

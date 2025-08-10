@@ -319,39 +319,54 @@ def _build_user_notes_from_context(plan_context: Dict[str, object]) -> Tuple[str
     # Existing artifact as context
     current_plan_text: Optional[str] = None
     prev_questions_text: Optional[str] = None
-    if isinstance(existing_artifact, dict):
-        try:
+    
+    if existing_artifact is not None:
+        if isinstance(existing_artifact, str):
+            # Handle string artifacts (markdown content from frontend)
             parts.extend(
                 [
-                    "## Current Plan Artifact",
-                    "```json",
-                    json.dumps(existing_artifact, indent=2),
+                    "## Current Plan (Markdown)",
+                    "```markdown",
+                    existing_artifact,
                     "```",
                     "",
                 ]
             )
-        except Exception:
-            pass
-        # Try extracting structured fields if present
-        for key in ("clarifying_questions", "questions"):
-            if key in existing_artifact and isinstance(existing_artifact[key], (list, str)):
-                prev_questions_text = (
-                    "\n".join(existing_artifact[key])
-                    if isinstance(existing_artifact[key], list)
-                    else str(existing_artifact[key])
+            current_plan_text = existing_artifact
+        elif isinstance(existing_artifact, dict):
+            # Handle dictionary artifacts (legacy format)
+            try:
+                parts.extend(
+                    [
+                        "## Current Plan Artifact",
+                        "```json",
+                        json.dumps(existing_artifact, indent=2),
+                        "```",
+                        "",
+                    ]
                 )
-                break
-        for key in ("plan", "draft", "overview"):
-            if key in existing_artifact and isinstance(existing_artifact[key], (dict, list, str)):
-                try:
-                    current_plan_text = (
-                        json.dumps(existing_artifact[key], indent=2)
-                        if isinstance(existing_artifact[key], (dict, list))
+            except Exception:
+                pass
+            # Try extracting structured fields if present
+            for key in ("clarifying_questions", "questions"):
+                if key in existing_artifact and isinstance(existing_artifact[key], (list, str)):
+                    prev_questions_text = (
+                        "\n".join(existing_artifact[key])
+                        if isinstance(existing_artifact[key], list)
                         else str(existing_artifact[key])
                     )
-                except Exception:
-                    current_plan_text = str(existing_artifact[key])
-                break
+                    break
+            for key in ("plan", "draft", "overview"):
+                if key in existing_artifact and isinstance(existing_artifact[key], (dict, list, str)):
+                    try:
+                        current_plan_text = (
+                            json.dumps(existing_artifact[key], indent=2)
+                            if isinstance(existing_artifact[key], (dict, list))
+                            else str(existing_artifact[key])
+                        )
+                    except Exception:
+                        current_plan_text = str(existing_artifact[key])
+                    break
 
     # Recent chat messages (last few)
     if isinstance(chat_history, list) and chat_history:

@@ -42,7 +42,8 @@ export type Plan = {
 export type ArtifactType =
   | "feature_plan"
   | "implementation_steps"
-  | "code_changes";
+  | "code_changes"
+  | "plan_version";
 
 export type PlanArtifact = {
   id: string;
@@ -50,6 +51,7 @@ export type PlanArtifact = {
   content: Record<string, any>;
   artifactType: ArtifactType;
   createdAt: string;
+  version?: number; // for PlanVersion compatibility
 };
 
 export type ChatStatus = "active" | "completed";
