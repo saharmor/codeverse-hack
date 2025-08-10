@@ -9,11 +9,29 @@ if ! command -v node &> /dev/null; then
     exit 1
 fi
 
-# Check if Python is installed
-if ! command -v python3 &> /dev/null; then
-    echo "❌ Python3 is not installed. Please install Python 3.8 or later."
+# Check if Python is installed and find compatible version
+PYTHON_CMD=""
+PYTHON_VERSION=""
+
+# Try to find Python 3.11 first (most compatible)
+if command -v python3.11 &> /dev/null; then
+    PYTHON_CMD="python3.11"
+    PYTHON_VERSION="3.11"
+elif command -v python3.10 &> /dev/null; then
+    PYTHON_CMD="python3.10"
+    PYTHON_VERSION="3.10"
+elif command -v python3.9 &> /dev/null; then
+    PYTHON_CMD="python3.9"
+    PYTHON_VERSION="3.9"
+elif command -v python3 &> /dev/null; then
+    PYTHON_CMD="python3"
+    PYTHON_VERSION=$(python3 --version | cut -d' ' -f2 | cut -d'.' -f1,2)
+else
+    echo "❌ Python3 is not installed. Please install Python 3.9, 3.10, or 3.11."
     exit 1
 fi
+
+echo "✅ Found Python $PYTHON_VERSION at: $(which $PYTHON_CMD)"
 
 # Check if Rust is installed
 if ! command -v rustc &> /dev/null; then
@@ -37,17 +55,33 @@ cd backend
 
 # Create virtual environment
 if [ ! -d "venv" ]; then
-    echo "Creating Python virtual environment..."
-    python3 -m venv venv
+    echo "Creating Python virtual environment with $PYTHON_CMD..."
+    $PYTHON_CMD -m venv venv
 fi
 
 # Activate virtual environment
 echo "Activating virtual environment..."
 source venv/bin/activate
 
-# Install Python dependencies
+# Upgrade pip first
+echo "Upgrading pip..."
+pip install --upgrade pip
+
+# Install Python dependencies with retry logic for pydantic-core
 echo "Installing Python dependencies..."
-pip install -r requirements.txt
+if ! pip install -r requirements.txt; then
+    echo "⚠️  First attempt failed. Trying to install pydantic-core separately..."
+    
+    # Try to install pydantic-core with specific version that's compatible
+    if ! pip install "pydantic-core<2.15.0"; then
+        echo "⚠️  Trying alternative approach - installing pydantic with compatible version..."
+        pip install "pydantic<2.6.0"
+    fi
+    
+    # Now try to install the rest of the requirements
+    echo "Installing remaining dependencies..."
+    pip install -r requirements.txt
+fi
 
 cd ..
 
