@@ -48,43 +48,24 @@ async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any],
         raise HTTPException(status_code=404, detail="Repository not found")
 
     # Get existing plan version (if any)
-    existing_plan_version = None
-    plan_version_override = request_data.get("plan_artifact")
-    if plan_version_override:
-        existing_plan_version = plan_version_override
+    plan_draft_text = None
+    plan_curr_draft_text = request_data.get("plan_artifact")
+    if plan_curr_draft_text:
+        plan_draft_text = plan_curr_draft_text
     else:
-        result = await db.execute(select(PlanVersion).where(PlanVersion.plan_id == plan_id))
-        artifact = result.scalar_one_or_none()
-        if artifact and artifact.content:
-            # Handle different content structures safely
-            if isinstance(artifact.content, dict):
-                existing_artifact = json.dumps(artifact.content)
-            else:
-                existing_artifact = str(artifact.content)
-
-    existing_artifact = None  # TODO SAHAR test for initial plan
+        plan_draft_text = None
     
     # Get chat history
-    chat_history = []
     chat_override = request_data.get("chat_messages")
     if chat_override:
-        chat_history = chat_override
+        for message in reversed(chat_override):
+            if (isinstance(message, dict) and 
+                message.get("role") == "assistant"):
+                prev_clarifying_questions = message.get("content", "")
+                break
     else:
-        result = await db.execute(select(ChatSession).where(ChatSession.plan_id == plan_id))
-        chat_session = result.scalar_one_or_none()
-        if chat_session and chat_session.messages:
-            chat_history = chat_session.messages
-
-    # Extract previous clarifying questions from chat history
-    prev_clarifying_questions = None
-    # Look through chat history from most recent to oldest
-    for message in reversed(chat_history):
-        if (isinstance(message, dict) and 
-            message.get("role") == "assistant" and 
-            message.get("type") == "clarifying_questions"):
-            prev_clarifying_questions = str(message.get("content", ""))
-            break
-
+        prev_clarifying_questions = None
+    
     # Stream the response from Claude
     async def stream_response():
         try:
@@ -92,7 +73,7 @@ async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any],
                 project_dir=repository.path,
                 user_raw_notes=user_message,
                 prev_clarifying_questions=prev_clarifying_questions,
-                current_plan=existing_artifact,
+                current_plan=plan_draft_text,
             ):
                 # Send each chunk in the requested format
                 chunk_data = {
