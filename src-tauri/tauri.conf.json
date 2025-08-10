@@ -37,12 +37,13 @@
       {
         "fullscreen": false,
         "resizable": true,
+        "decorations": true,
         "title": "Tauri Next.js FastAPI App",
         "width": 1200,
         "height": 800,
-        "minWidth": 800,
-        "minHeight": 600
+        "minWidth": 420,
+        "minHeight": 360
       }
     ]
   }
-} 
+}

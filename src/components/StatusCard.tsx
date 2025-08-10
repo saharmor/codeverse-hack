@@ -50,4 +50,4 @@ const StatusCard: React.FC<StatusCardProps> = ({ title, status, message, icon })
   )
 }
 
-export default StatusCard 
+export default StatusCard

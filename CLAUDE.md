@@ -179,14 +179,14 @@ async def generate_plan(
 ) -> AsyncIterator[str]:
     """
     Core function that orchestrates plan generation with Claude Code.
-    
+
     Args:
         user_input: Latest user message/request
         repository: Target repository information
         existing_plan: Current plan (if iterating)
         chat_history: Previous conversation context
         branch: Target branch for implementation
-    
+
     Yields:
         Streaming response from Claude Code
     """

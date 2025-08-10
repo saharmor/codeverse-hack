@@ -13,10 +13,16 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^1.5.2",
+    "@uiw/react-markdown-editor": "^6.1.4",
+    "@uiw/react-md-editor": "^4.0.8",
     "lucide-react": "^0.539.0",
     "next": "14.0.4",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2",
+    "rehype-raw": "^7.0.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.11",

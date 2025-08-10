@@ -38,6 +38,7 @@ src-tauri/target/
 src-tauri/Cargo.lock
 
 # Python
+backend/codeverse.db
 backend/.venv/
 backend/__pycache__/
 backend/**/__pycache__/
@@ -95,6 +96,9 @@ backend/*.temp
 *.swo
 *~
 
+# Dummy repositories for testing
+temp-repos/
+
 # OS
 .DS_Store
 .DS_Store?
@@ -103,3 +107,6 @@ backend/*.temp
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+
+plan_*

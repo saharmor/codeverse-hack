@@ -5,8 +5,8 @@ import asyncio
 import os
 import sys
 
-# Add current directory to Python path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Add parent directory to Python path for imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import AsyncSessionLocal, create_tables, drop_tables
 from models import ChatSession, Plan, PlanArtifact, Repository
@@ -45,7 +45,7 @@ async def test_database():
                 description="A test feature plan",
                 target_branch="feature/test",
                 version=1,
-                status=PlanStatus.DRAFT,
+                status=PlanStatus.DRAFT.value,  # Use .value for string
             )
             session.add(plan)
             await session.commit()
@@ -56,7 +56,7 @@ async def test_database():
             artifact = PlanArtifact(
                 plan_id=plan.id,
                 content={"steps": ["Step 1", "Step 2", "Step 3"]},
-                artifact_type=ArtifactType.FEATURE_PLAN,
+                artifact_type=ArtifactType.FEATURE_PLAN.value,  # Use .value for string
             )
             session.add(artifact)
             await session.commit()
@@ -73,7 +73,7 @@ async def test_database():
                         "content": "Hi! How can I help with your feature planning?",
                     },
                 ],
-                status=ChatStatus.ACTIVE,
+                status=ChatStatus.ACTIVE.value,  # Use .value for string
             )
             session.add(chat)
             await session.commit()

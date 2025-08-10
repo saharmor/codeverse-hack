@@ -7,4 +7,4 @@ export default function HomePage() {
   return (
     <ResizableLayout />
   )
-} 
+}
