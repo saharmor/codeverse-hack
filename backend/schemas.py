@@ -3,7 +3,7 @@ Pydantic schemas for API request/response models
 """
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -74,7 +74,7 @@ class Plan(PlanBase):
 
 # Plan Version schemas
 class PlanVersionBase(BaseModel):
-    content: Dict[str, Any]
+    content: str
     version: int = 1
 
 
@@ -83,7 +83,7 @@ class PlanVersionCreate(PlanVersionBase):
 
 
 class PlanVersionUpdate(BaseModel):
-    content: Optional[Dict[str, Any]] = None
+    content: Optional[str] = None
 
 
 class PlanVersion(PlanVersionBase):

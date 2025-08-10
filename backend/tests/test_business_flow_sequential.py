@@ -100,7 +100,7 @@ class TestBusinessFlowSequential:
                 "and Node.js with Socket.io for the backend. Can you help me create a "
                 "comprehensive plan with architecture decisions and implementation steps?"
             ),
-            "existing_artifact": None,
+            "existing_plan_version": None,
             "chat_history": [],
         }
 

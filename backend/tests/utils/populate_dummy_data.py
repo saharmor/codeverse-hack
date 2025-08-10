@@ -136,34 +136,9 @@ li {
                 "name": "Add Dark Mode",
                 "description": "Implement dark mode toggle for better user experience",
                 "target_branch": "main",
-                "artifacts": [
+                "plan_versions": [
                     {
-                        "content": {
-                            "title": "Dark Mode Implementation Plan",
-                            "sections": [
-                                {
-                                    "title": "Overview",
-                                    "content": "Add a dark mode toggle that switches between light and dark themes",
-                                },
-                                {
-                                    "title": "Requirements",
-                                    "content": (
-                                        "- Toggle button in header\n"
-                                        "- Dark theme CSS variables\n"
-                                        "- Persist theme preference in localStorage"
-                                    ),
-                                },
-                                {
-                                    "title": "Implementation Steps",
-                                    "content": (
-                                        "1. Create theme context\n"
-                                        "2. Add CSS variables for dark/light themes\n"
-                                        "3. Implement toggle component\n"
-                                        "4. Add localStorage persistence"
-                                    ),
-                                },
-                            ],
-                        },
+                        "content": "# Dark Mode Implementation Plan\n\n## Overview\nAdd a dark mode toggle that switches between light and dark themes\n\n## Requirements\n- Toggle button in header\n- Dark theme CSS variables\n- Persist theme preference in localStorage\n\n## Implementation Steps\n1. Create theme context\n2. Add CSS variables for dark/light themes\n3. Implement toggle component\n4. Add localStorage persistence",
                     }
                 ],
                 "chat_messages": [
@@ -194,18 +169,9 @@ li {
                 "name": "Add User Authentication",
                 "description": "Implement user login/logout functionality",
                 "target_branch": "feature-auth",
-                "artifacts": [
+                "plan_versions": [
                     {
-                        "content": {
-                            "title": "User Authentication Implementation",
-                            "steps": [
-                                "Set up authentication context",
-                                "Create login/register forms",
-                                "Implement JWT token handling",
-                                "Add protected routes",
-                                "Connect user-specific todos",
-                            ],
-                        },
+                        "content": "# User Authentication Implementation\n\n## Steps\n1. Set up authentication context\n2. Create login/register forms\n3. Implement JWT token handling\n4. Add protected routes\n5. Connect user-specific todos",
                     }
                 ],
                 "chat_messages": [
@@ -338,20 +304,9 @@ if __name__ == '__main__':
                 "name": "Add Machine Learning Features",
                 "description": "Extend analyzer with basic ML capabilities",
                 "target_branch": "main",
-                "artifacts": [
+                "plan_versions": [
                     {
-                        "content": {
-                            "title": "Machine Learning Integration",
-                            "overview": (
-                                "Add basic ML capabilities including clustering, " "classification, and regression"
-                            ),
-                            "features": [
-                                "K-means clustering",
-                                "Linear regression",
-                                "Data preprocessing utilities",
-                                "Model evaluation metrics",
-                            ],
-                        },
+                        "content": "# Machine Learning Integration\n\n## Overview\nAdd basic ML capabilities including clustering, classification, and regression\n\n## Features\n- K-means clustering\n- Linear regression\n- Data preprocessing utilities\n- Model evaluation metrics",
                     }
                 ],
                 "chat_messages": [
@@ -487,19 +442,9 @@ module.exports = app;
                 "name": "Add Database Integration",
                 "description": "Replace in-memory storage with MongoDB",
                 "target_branch": "feature-database",
-                "artifacts": [
+                "plan_versions": [
                     {
-                        "content": {
-                            "title": "MongoDB Integration Plan",
-                            "steps": [
-                                "Set up MongoDB connection",
-                                "Create User model with Mongoose",
-                                "Replace in-memory operations with database queries",
-                                "Add data validation",
-                                "Implement error handling for database operations",
-                                "Add database seeding script",
-                            ],
-                        },
+                        "content": "# MongoDB Integration Plan\n\n## Steps\n1. Set up MongoDB connection\n2. Create User model with Mongoose\n3. Replace in-memory operations with database queries\n4. Add data validation\n5. Implement error handling for database operations\n6. Add database seeding script",
                     }
                 ],
                 "chat_messages": [
@@ -633,15 +578,15 @@ async def populate_database() -> None:
 
                 print(f"    Created plan: {plan_config['name']}")
 
-                # Create artifacts
-                for artifact_config in plan_config.get("artifacts", []):
-                    artifact = PlanVersion(
+                # Create plan versions
+                for plan_version_config in plan_config.get("plan_versions", []):
+                    plan_version = PlanVersion(
                         id=str(uuid.uuid4()),
                         plan_id=plan.id,
-                        content=artifact_config["content"],
+                        content=plan_version_config["content"],
                         version=1,
                     )
-                    session.add(artifact)
+                    session.add(plan_version)
 
                 # Create chat session
                 chat_session = ChatSession(
