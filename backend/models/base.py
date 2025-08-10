@@ -4,7 +4,7 @@ Base model class with common fields and utilities
 import uuid
 
 from sqlalchemy import Column, DateTime, String, func
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 

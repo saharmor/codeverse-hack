@@ -56,5 +56,12 @@ class Settings:
     MAX_AUDIO_SECONDS: int = int(os.getenv("MAX_AUDIO_SECONDS", "60"))
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 
+    # Claude CLI Configuration
+    # Set CLAUDE_CLI_PATH environment variable to specify custom Claude CLI location
+    # If not set, the system will try common locations:
+    # - ~/.claude/local (official Claude CLI)
+    # - /usr/local/bin (system-wide installs)
+    # - ~/node_modules/.bin (npm local installs)
+
 
 settings = Settings()

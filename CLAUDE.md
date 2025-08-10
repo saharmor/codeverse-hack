@@ -191,3 +191,33 @@ async def generate_plan(
         Streaming response from Claude Code
     """
 ```
+
+## Claude CLI Configuration
+
+### Setup Requirements
+
+The backend requires Claude Code CLI to be installed and accessible. The system automatically detects Claude CLI from these locations (in order):
+
+1. **~/.claude/local** - Official Claude CLI installation directory
+2. **/usr/local/bin** - System-wide installation location
+3. **~/node_modules/.bin** - npm local installation
+
+### Custom Claude CLI Path
+
+If your Claude CLI is installed in a different location, set the environment variable:
+
+```bash
+export CLAUDE_CLI_PATH=/path/to/your/claude/cli/directory
+```
+
+### Installation Methods
+
+#### Official Claude CLI (Recommended)
+Follow official installation instructions from Anthropic
+
+#### npm Installation
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+The system will automatically find and use the appropriate Claude CLI installation.

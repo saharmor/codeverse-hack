@@ -57,53 +57,88 @@ export class ApiClient {
     return this.request("/health");
   }
 
-  // Users API
-  async getUsers(): Promise<ApiResponse<any[]>> {
-    return this.request("/api/users");
+  // Repositories
+  async listRepositories(): Promise<ApiResponse<any[]>> {
+    return this.request("/api/repositories");
   }
 
-  async createUser(userData: {
-    username: string;
-    email: string;
-  }): Promise<ApiResponse> {
-    return this.request("/api/users", {
+  async createRepository(payload: {
+    name: string;
+    path: string;
+    git_url?: string | null;
+    default_branch?: string;
+  }): Promise<ApiResponse<any>> {
+    return this.request("/api/repositories", {
       method: "POST",
-      body: JSON.stringify(userData),
+      body: JSON.stringify(payload),
     });
   }
 
-  async getUser(userId: number): Promise<ApiResponse> {
-    return this.request(`/api/users/${userId}`);
+  async deleteRepository(repoId: string): Promise<ApiResponse> {
+    return this.request(`/api/repositories/${repoId}`, { method: "DELETE" });
   }
 
-  // Messages API
-  async getMessages(): Promise<ApiResponse<any[]>> {
-    return this.request("/api/messages");
+  // Plans
+  async listPlans(repoId: string): Promise<ApiResponse<any[]>> {
+    return this.request(`/api/repositories/${repoId}/plans`);
   }
 
-  async createMessage(message: string): Promise<ApiResponse> {
-    return this.request("/api/messages", {
+  async createPlan(
+    repoId: string,
+    payload: {
+      name: string;
+      description?: string | null;
+      target_branch: string;
+      version?: number;
+      status?: string;
+    }
+  ): Promise<ApiResponse<any>> {
+    return this.request(`/api/repositories/${repoId}/plans`, {
       method: "POST",
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ ...payload, repository_id: repoId }),
     });
   }
 
-  // Stats API
-  async getStats(): Promise<ApiResponse> {
-    return this.request("/api/stats");
+  async deletePlan(planId: string): Promise<ApiResponse> {
+    return this.request(`/api/plans/${planId}`, { method: "DELETE" });
+  }
+
+  async getPlan(planId: string): Promise<ApiResponse<any>> {
+    return this.request(`/api/plans/${planId}`);
+  }
+
+  // Artifacts
+  async listArtifacts(planId: string): Promise<ApiResponse<any[]>> {
+    return this.request(`/api/plans/${planId}/artifacts`);
+  }
+
+  // Chat
+  async getPlanChat(planId: string): Promise<ApiResponse<any>> {
+    return this.request(`/api/plans/${planId}/chat`);
+  }
+
+  async createPlanChat(
+    planId: string,
+    payload?: { messages?: any[]; status?: string }
+  ): Promise<ApiResponse<any>> {
+    return this.request(`/api/plans/${planId}/chat`, {
+      method: "POST",
+      body: JSON.stringify({ plan_id: planId, ...(payload || {}) }),
+    });
+  }
+
+  async updateChat(
+    chatId: string,
+    payload: { messages?: any[]; status?: string }
+  ): Promise<ApiResponse<any>> {
+    return this.request(`/api/chat/${chatId}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
   }
 }
 
 // Export a default instance
 export const apiClient = new ApiClient();
 
-// Export individual functions for convenience
-export const {
-  healthCheck,
-  getUsers,
-  createUser,
-  getUser,
-  getMessages,
-  createMessage,
-  getStats,
-} = apiClient;
+export const { healthCheck } = apiClient;

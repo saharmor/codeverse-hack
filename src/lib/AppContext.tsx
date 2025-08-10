@@ -1,80 +1,233 @@
 'use client'
 
-import React, { createContext, useCallback, useContext, useMemo, useState } from 'react'
-import type { ChatMessage, Project } from './types'
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import type { ChatMessage, Repository, Plan, PlanArtifact, ChatSession } from './types'
+import { apiClient } from './api'
 
 interface AppContextValue {
-  projects: Project[]
-  selectedProjectId: string | null
-  selectProject: (id: string) => void
-  addProject: (project: Omit<Project, 'id'>) => void
+  // repositories
+  repositories: Repository[]
+  selectedRepositoryId: string | null
+  selectRepository: (id: string) => void
+  createRepository: (repo: { name: string; path: string; git_url?: string | null; default_branch?: string }) => Promise<void>
+  deleteRepository: (id: string) => Promise<void>
+
+  // plans
+  plans: Plan[]
+  selectedPlanId: string | null
+  selectPlan: (id: string) => void
+  createPlan: (payload: { name: string; description?: string; target_branch: string }) => Promise<void>
+  deletePlan: (id: string) => Promise<void>
+
+  // chat
   chatMessages: ChatMessage[]
-  sendMessage: (content: string) => void
+  sendMessage: (content: string) => Promise<void>
+
+  // artifacts
+  artifacts: PlanArtifact[]
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined)
 
-const initialProjects: Project[] = [
-  { id: 'p1', name: 'Codeverse', path: '~/codeverse', lastUpdated: '2025-08-01', icon: 'folder' },
-  { id: 'p2', name: 'Marketing Site', path: '~/sites/marketing', lastUpdated: '2025-08-08', icon: 'dashboard' },
-  { id: 'p3', name: 'AI Research', path: '~/work/ai-research', lastUpdated: '2025-07-24', icon: 'folder' },
-]
-
-const initialMessages: ChatMessage[] = [
-  {
-    id: 'm1',
-    role: 'assistant',
-    content: 'Hi! I\'m ready to help. What would you like to work on today?\n\nHere are a few clarifying questions to get started:',
-    timestamp: Date.now() - 1000 * 60 * 5,
-  },
-]
-
 export function AppContextProvider({ children }: { children: React.ReactNode }) {
-  const [projects, setProjects] = useState<Project[]>(initialProjects)
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(projects[0]?.id ?? null)
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>(initialMessages)
+  const [repositories, setRepositories] = useState<Repository[]>([])
+  const [selectedRepositoryId, setSelectedRepositoryId] = useState<string | null>(null)
 
-  const selectProject = useCallback((id: string) => {
-    setSelectedProjectId(id)
+  const [plans, setPlans] = useState<Plan[]>([])
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null)
+
+  const [chatSession, setChatSession] = useState<ChatSession | null>(null)
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+
+  const [artifacts, setArtifacts] = useState<PlanArtifact[]>([])
+
+  // Initial load of repositories
+  useEffect(() => {
+    (async () => {
+      const res = await apiClient.listRepositories()
+      if (res.data) {
+        // map backend fields to frontend casing if needed
+        const repos: Repository[] = res.data.map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          path: r.path,
+          gitUrl: r.git_url ?? null,
+          defaultBranch: r.default_branch ?? 'main',
+          createdAt: r.created_at,
+          updatedAt: r.updated_at,
+        }))
+        setRepositories(repos)
+        if (repos.length > 0) setSelectedRepositoryId(repos[0].id)
+      }
+    })()
   }, [])
 
-  const addProject = useCallback((project: Omit<Project, 'id'>) => {
-    const newProject: Project = { id: `p${Date.now()}`, ...project }
-    setProjects(prev => [newProject, ...prev])
-    setSelectedProjectId(newProject.id)
+  // Load plans whenever repository changes
+  useEffect(() => {
+    if (!selectedRepositoryId) return
+    (async () => {
+      const res = await apiClient.listPlans(selectedRepositoryId)
+      if (res.data) {
+        const mapped: Plan[] = res.data.map((p: any) => ({
+          id: p.id,
+          repositoryId: p.repository_id,
+          name: p.name,
+          description: p.description,
+          targetBranch: p.target_branch,
+          version: p.version,
+          status: p.status,
+          createdAt: p.created_at,
+          updatedAt: p.updated_at,
+        }))
+        setPlans(mapped)
+        setSelectedPlanId(mapped[0]?.id ?? null)
+      }
+    })()
+  }, [selectedRepositoryId])
+
+  // Load artifacts and chat when plan changes
+  useEffect(() => {
+    if (!selectedPlanId) {
+      setArtifacts([])
+      setChatSession(null)
+      setChatMessages([])
+      return
+    }
+    (async () => {
+      const [art, chat] = await Promise.all([
+        apiClient.listArtifacts(selectedPlanId),
+        apiClient.getPlanChat(selectedPlanId).catch(() => ({ data: null })),
+      ])
+      if (art.data) {
+        const mapped: PlanArtifact[] = art.data.map((a: any) => ({
+          id: a.id,
+          planId: a.plan_id,
+          content: a.content,
+          artifactType: a.artifact_type,
+          createdAt: a.created_at,
+        }))
+        setArtifacts(mapped)
+      } else {
+        setArtifacts([])
+      }
+      if (chat.data) {
+        setChatSession(chat.data)
+        const msgs: ChatMessage[] = (chat.data.messages || []).map((m: any, idx: number) => ({
+          id: `m${idx}`,
+          role: (m.role as 'user' | 'assistant') ?? 'assistant',
+          content: m.content,
+          timestamp: m.timestamp ? Date.parse(m.timestamp) : Date.now(),
+        }))
+        setChatMessages(msgs)
+      } else {
+        setChatSession(null)
+        setChatMessages([])
+      }
+    })()
+  }, [selectedPlanId])
+
+  // Actions
+  const selectRepository = useCallback((id: string) => {
+    setSelectedRepositoryId(id)
   }, [])
 
-  const sendMessage = useCallback((content: string) => {
+  const createRepository = useCallback(async (repo: { name: string; path: string; git_url?: string | null; default_branch?: string }) => {
+    console.log('Creating repository:', repo)
+    const res = await apiClient.createRepository(repo)
+    console.log('Repository creation response:', res)
+    if (res.data) {
+      const r = res.data as any
+      const newRepo: Repository = {
+        id: r.id,
+        name: r.name,
+        path: r.path,
+        gitUrl: r.git_url ?? null,
+        defaultBranch: r.default_branch ?? 'main',
+        createdAt: r.created_at,
+        updatedAt: r.updated_at,
+      }
+      setRepositories(prev => [newRepo, ...prev])
+      setSelectedRepositoryId(newRepo.id)
+    } else if (res.error) {
+      console.error('Repository creation error:', res.error)
+      alert('Error creating repository: ' + res.error)
+    }
+  }, [])
+
+  const deleteRepository = useCallback(async (id: string) => {
+    await apiClient.deleteRepository(id)
+    setRepositories(prev => prev.filter(r => r.id !== id))
+    setSelectedRepositoryId(prev => (prev === id ? null : prev))
+  }, [])
+
+  const selectPlan = useCallback((id: string) => setSelectedPlanId(id), [])
+
+  const createPlan = useCallback(async (payload: { name: string; description?: string; target_branch: string }) => {
+    if (!selectedRepositoryId) return
+    console.log('Creating plan:', payload, 'for repo:', selectedRepositoryId)
+    const res = await apiClient.createPlan(selectedRepositoryId, payload)
+    console.log('Plan creation response:', res)
+    if (res.data) {
+      const p = res.data as any
+      const newPlan: Plan = {
+        id: p.id,
+        repositoryId: p.repository_id,
+        name: p.name,
+        description: p.description,
+        targetBranch: p.target_branch,
+        version: p.version,
+        status: p.status,
+        createdAt: p.created_at,
+        updatedAt: p.updated_at,
+      }
+      setPlans(prev => [newPlan, ...prev])
+      setSelectedPlanId(newPlan.id)
+    } else if (res.error) {
+      console.error('Plan creation error:', res.error)
+      alert('Error creating plan: ' + res.error)
+    }
+  }, [selectedRepositoryId])
+
+  const deletePlan = useCallback(async (id: string) => {
+    await apiClient.deletePlan(id)
+    setPlans(prev => prev.filter(p => p.id !== id))
+    setSelectedPlanId(prev => (prev === id ? null : prev))
+  }, [])
+
+  const sendMessage = useCallback(async (content: string) => {
     const trimmed = content.trim()
     if (!trimmed) return
 
-    const userMessage: ChatMessage = {
-      id: `m${Date.now()}`,
-      role: 'user',
-      content: trimmed,
-      timestamp: Date.now(),
-    }
+    // optimistic update
+    const userMsg: ChatMessage = { id: `m${Date.now()}`, role: 'user', content: trimmed, timestamp: Date.now() }
+    setChatMessages(prev => [...prev, userMsg])
 
-    setChatMessages(prev => [...prev, userMessage])
-
-    // For now, simulate an assistant response immediately.
-    const assistantMessage: ChatMessage = {
-      id: `m${Date.now() + 1}`,
-      role: 'assistant',
-      content: 'Got it. I\'ll draft a plan and surface artifacts in the Task Output panel. Would you like a high-level summary or step-by-step details?',
-      timestamp: Date.now(),
+    // persist to backend chat session
+    if (chatSession) {
+      const updated = [...(chatSession.messages || []), { role: 'user', content: trimmed }]
+      const res = await apiClient.updateChat(chatSession.id, { messages: updated })
+      if (res.data) setChatSession(res.data)
+    } else if (selectedPlanId) {
+      const res = await apiClient.createPlanChat(selectedPlanId, { messages: [{ role: 'user', content: trimmed }] })
+      if (res.data) setChatSession(res.data)
     }
-    setChatMessages(prev => [...prev, assistantMessage])
-  }, [])
+  }, [chatSession, selectedPlanId])
 
   const value = useMemo<AppContextValue>(() => ({
-    projects,
-    selectedProjectId,
-    selectProject,
-    addProject,
+    repositories,
+    selectedRepositoryId,
+    selectRepository,
+    createRepository,
+    deleteRepository,
+    plans,
+    selectedPlanId,
+    selectPlan,
+    createPlan,
+    deletePlan,
     chatMessages,
     sendMessage,
-  }), [projects, selectedProjectId, selectProject, addProject, chatMessages, sendMessage])
+    artifacts,
+  }), [repositories, selectedRepositoryId, selectRepository, createRepository, deleteRepository, plans, selectedPlanId, selectPlan, createPlan, deletePlan, chatMessages, sendMessage, artifacts])
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }

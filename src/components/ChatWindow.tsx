@@ -15,11 +15,13 @@ function Avatar({ role }: { role: 'user' | 'assistant' }) {
 }
 
 export default function ChatWindow() {
-  const { chatMessages, sendMessage } = useAppContext()
+  const { chatMessages, sendMessage, plans, selectedPlanId } = useAppContext()
   const [input, setInput] = useState('')
   const [voiceBusy, setVoiceBusy] = useState(false)
   const [inlineRecording, setInlineRecording] = useState(false)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+
+  const selectedPlan = useMemo(() => plans.find(p => p.id === selectedPlanId) || null, [plans, selectedPlanId])
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -55,7 +57,7 @@ export default function ChatWindow() {
     <section className="w-full h-full min-h-0 flex flex-col bg-white border-l border-gray-100" role="complementary">
       {/* Header */}
       <header className="shrink-0 border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-gray-900">Hello There - Canvas</h2>
+        <h2 className="text-sm font-medium text-gray-900">{selectedPlan ? `${selectedPlan.name} – Chat` : 'Chat'}</h2>
         <div className="flex items-center gap-2">
           <button aria-label="Back" className="p-2 rounded-md hover:bg-gray-100 text-gray-600"><ChevronLeft className="w-4 h-4" /></button>
           <button aria-label="Forward" className="p-2 rounded-md hover:bg-gray-100 text-gray-600"><ChevronRight className="w-4 h-4" /></button>

@@ -172,7 +172,7 @@ scripts/
 
 # Or manual setup
 npm install
-cd backend && python -m venv venv && pip install -r requirements.txt
+cd backend && python -m venv .venv && pip install -r requirements.txt
 ```
 
 ### 2. Development Phase:

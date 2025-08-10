@@ -5,6 +5,8 @@ import asyncio
 import os
 import sys
 
+import pytest
+
 # Add parent directory to Python path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -14,6 +16,7 @@ from models.chat import ChatStatus
 from models.plan import ArtifactType, PlanStatus
 
 
+@pytest.mark.asyncio
 async def test_database():
     """Test database operations"""
     print("Testing database operations...")
@@ -81,11 +84,10 @@ async def test_database():
             print(f"✓ Created chat session: {chat}")
 
             print("\n✅ All database tests passed successfully!")
-            return True
 
     except Exception as e:
         print(f"❌ Database test failed: {e}")
-        return False
+        pytest.fail(f"Database test failed: {e}")
 
 
 if __name__ == "__main__":

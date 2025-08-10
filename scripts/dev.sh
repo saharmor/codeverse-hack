@@ -25,19 +25,16 @@ fi
 # Start backend
 echo "🐍 Starting FastAPI backend..."
 cd backend
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo "❌ Virtual environment not found. Please run setup.sh first."
     exit 1
 fi
 
-source venv/bin/activate
-# Load backend-specific .env if present
-if [ -f .env ]; then
-  echo "📦 Loading backend/.env"
-  set -a
-  source .env
-  set +a
-fi
+source .venv/bin/activate
+python - << 'PY'
+import openai, httpx
+print('Backend runtime deps:', 'openai', openai.__version__, 'httpx', httpx.__version__)
+PY
 python run.py &
 BACKEND_PID=$!
 cd ..

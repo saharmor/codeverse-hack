@@ -5,6 +5,7 @@ API endpoint testing script
 import json
 import time
 
+import pytest
 import requests
 
 BASE_URL = "http://localhost:8000"
@@ -21,7 +22,7 @@ def test_api_endpoints():
         print(json.dumps(response.json(), indent=2))
     else:
         print(f"❌ Health check failed: {response.status_code}")
-        return False
+        pytest.fail(f"Health check failed: {response.status_code}")
 
     # Create repository
     print("\n2. Testing repository creation...")
@@ -40,7 +41,7 @@ def test_api_endpoints():
     else:
         print(f"❌ Repository creation failed: {response.status_code}")
         print(response.text)
-        return False
+        pytest.fail(f"Request failed")
 
     # Get all repositories
     print("\n3. Testing get repositories...")
@@ -51,7 +52,7 @@ def test_api_endpoints():
         print(f"Found {len(repos)} repositories")
     else:
         print(f"❌ Get repositories failed: {response.status_code}")
-        return False
+        pytest.fail(f"Request failed")
 
     # Create plan
     print("\n4. Testing plan creation...")
@@ -73,7 +74,7 @@ def test_api_endpoints():
     else:
         print(f"❌ Plan creation failed: {response.status_code}")
         print(response.text)
-        return False
+        pytest.fail(f"Request failed")
 
     # Get plans for repository
     print("\n5. Testing get plans for repository...")
@@ -84,7 +85,7 @@ def test_api_endpoints():
         print(f"Found {len(plans)} plans for repository")
     else:
         print(f"❌ Get plans failed: {response.status_code}")
-        return False
+        pytest.fail(f"Request failed")
 
     # Create plan artifact
     print("\n6. Testing plan artifact creation...")
@@ -113,7 +114,7 @@ def test_api_endpoints():
     else:
         print(f"❌ Plan artifact creation failed: {response.status_code}")
         print(response.text)
-        return False
+        pytest.fail(f"Request failed")
 
     # Create chat session
     print("\n7. Testing chat session creation...")
@@ -138,7 +139,7 @@ def test_api_endpoints():
     else:
         print(f"❌ Chat session creation failed: {response.status_code}")
         print(response.text)
-        return False
+        pytest.fail(f"Request failed")
 
     print("\n🎉 All API tests passed successfully!")
     print(
@@ -150,7 +151,6 @@ Summary:
 - Chat ID: {chat_id}
 """
     )
-    return True
 
 
 if __name__ == "__main__":

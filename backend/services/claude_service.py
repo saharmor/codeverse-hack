@@ -8,6 +8,7 @@ Claude Code, suitable for consumption by other modules.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from enum import Enum
 from typing import AsyncGenerator, Dict, List, Optional, Tuple
@@ -89,6 +90,24 @@ async def _query_claude_stream(
     - Ignores intermediate thinking/assistant/user/system messages.
     - Prints SDK-reported errors to stderr without yielding them.
     """
+    # Ensure Claude CLI is in PATH - try common locations
+    claude_paths = [
+        os.path.expanduser("~/.claude/local"),  # Official Claude CLI location
+        "/usr/local/bin",  # Common system-wide install location
+        os.path.expanduser("~/node_modules/.bin"),  # npm local install
+    ]
+
+    current_path = os.environ.get("PATH", "")
+
+    for claude_path in claude_paths:
+        if os.path.exists(claude_path) and claude_path not in current_path:
+            os.environ["PATH"] = f"{claude_path}:{current_path}"
+            current_path = os.environ["PATH"]  # Update for next iteration
+
+    # Also check if CLAUDE_CLI_PATH environment variable is set
+    custom_claude_path = os.environ.get("CLAUDE_CLI_PATH")
+    if custom_claude_path and os.path.exists(custom_claude_path) and custom_claude_path not in current_path:
+        os.environ["PATH"] = f"{custom_claude_path}:{current_path}"
     saw_any_delta = False
     async for message in query(
         prompt=prompt,
