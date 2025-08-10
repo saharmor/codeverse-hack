@@ -11,7 +11,7 @@ const MIN_RIGHT = 200
 const MAX_RIGHT = 520
 
 export default function ResizableLayout() {
-  const [leftWidth, setLeftWidth] = useState<number>(56)
+  const [leftWidth, setLeftWidth] = useState<number>(200)
   const [rightWidth, setRightWidth] = useState<number>(272)
   const [dragging, setDragging] = useState<'left' | 'right' | null>(null)
   const startXRef = useRef<number>(0)
