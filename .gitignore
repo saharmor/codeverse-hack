@@ -37,6 +37,7 @@ src-tauri/target/
 src-tauri/Cargo.lock
 
 # Python
+backend/codeverse.db
 backend/.venv/
 backend/__pycache__/
 backend/**/__pycache__/

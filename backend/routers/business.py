@@ -92,7 +92,7 @@ async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any], db:
 
     return StreamingResponse(
         stream_response(),
-        media_type="text/plain",
+        media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
