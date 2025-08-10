@@ -32,10 +32,7 @@ class ClaudeOutputManager:
     )
 
     PLAN = OutputSection(
-        name="plan",
-        header="# Plan draft",
-        description="The detailed implementation plan content",
-        order=2,
+        name="plan", header="# Plan draft", description="The detailed implementation plan content", order=2
     )
 
     CLARIFY_QUESTIONS = OutputSection(

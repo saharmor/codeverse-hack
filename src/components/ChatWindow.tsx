@@ -4,7 +4,7 @@ import React, { useMemo, useRef, useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, RefreshCw, Send, Mic } from 'lucide-react'
 import { useAppContext } from '../lib/AppContext'
 import VoiceRecorder from './VoiceRecorder'
-import { transcribeAudioDummy } from '../lib/transcription'
+import { transcribeAudio } from '../lib/transcription'
 
 function Avatar({ role }: { role: 'user' | 'assistant' }) {
   return (
@@ -46,9 +46,15 @@ export default function ChatWindow() {
   const onVoiceAccept = async (blob: Blob) => {
     setVoiceBusy(true)
     try {
-      const text = await transcribeAudioDummy(blob)
+      if (!selectedPlanId) throw new Error('No plan selected')
+      const result = await transcribeAudio(selectedPlanId, blob)
+      const text = result.corrected_text || result.raw_text || ''
       setInput(text)
       setInlineRecording(false)
+    } catch (err: any) {
+      console.error('Transcription failed:', err?.message || err)
+      if (err?.details) console.error('Server details:', err.details)
+      alert(`Transcription failed: ${err?.message || 'Unknown error'}`)
     } finally {
       setVoiceBusy(false)
     }
