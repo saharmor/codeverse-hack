@@ -31,8 +31,8 @@ cd ..
 sleep 3
 
 # Start frontend
-echo "⚛️  Starting Next.js frontend..."
-npm run dev &
+echo "⚛️  Starting tauri frontend..."
+npm run tauri:dev &
 FRONTEND_PID=$!
 
 # Wait a moment for frontend to start
