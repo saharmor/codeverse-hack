@@ -10,7 +10,7 @@ alembic==1.12.1
 aiosqlite==0.19.0
 greenlet==3.0.1
 requests==2.32.3
-claude-code-sdk==0.1.0
+claude-code-sdk==0.0.19
 
 # Development/Code Quality Tools
 black==23.12.0
