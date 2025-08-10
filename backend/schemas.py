@@ -82,6 +82,10 @@ class PlanVersionCreate(PlanVersionBase):
     plan_id: str
 
 
+class PlanVersionUpdate(BaseModel):
+    content: Optional[Dict[str, Any]] = None
+
+
 class PlanVersion(PlanVersionBase):
     id: str
     plan_id: str

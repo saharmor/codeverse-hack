@@ -4,7 +4,7 @@ import React, { useMemo } from 'react'
 import { useAppContext } from '../lib/AppContext'
 import MarkdownEditor from './MarkdownEditor'
 
-function ArtifactViewer({ artifact }: { artifact: any }) {
+function ArtifactViewer({ artifact, onContentChange }: { artifact: any, onContentChange?: (content: string) => void }) {
   const type = artifact.artifactType || artifact.artifact_type
   const content = artifact.content || {}
 
@@ -38,6 +38,7 @@ function ArtifactViewer({ artifact }: { artifact: any }) {
         <div className="flex-1 min-h-0">
           <MarkdownEditor 
             value={textContent}
+            onChange={onContentChange}
             placeholder="Plan content will appear here..."
             className="h-full"
           />
@@ -51,6 +52,7 @@ function ArtifactViewer({ artifact }: { artifact: any }) {
       <div className="h-full">
         <MarkdownEditor 
           value={content.text || content.markdown}
+          onChange={onContentChange}
           placeholder="Feature plan content will appear here..."
           className="h-full"
         />
@@ -69,6 +71,7 @@ function ArtifactViewer({ artifact }: { artifact: any }) {
       <div className="h-full">
         <MarkdownEditor 
           value={markdownSteps}
+          onChange={onContentChange}
           placeholder="Implementation steps will appear here..."
           className="h-full"
         />
@@ -84,6 +87,7 @@ function ArtifactViewer({ artifact }: { artifact: any }) {
       <div className="h-full">
         <MarkdownEditor 
           value={diffMarkdown}
+          onChange={onContentChange}
           placeholder="Code changes will appear here..."
           className="h-full"
         />
@@ -104,6 +108,7 @@ function ArtifactViewer({ artifact }: { artifact: any }) {
       <div className="flex-1 min-h-0">
         <MarkdownEditor 
           value={jsonMarkdown}
+          onChange={onContentChange}
           placeholder="Artifact content will appear here..."
           className="h-full"
         />
@@ -113,7 +118,7 @@ function ArtifactViewer({ artifact }: { artifact: any }) {
 }
 
 export default function TaskOutputPanel() {
-  const { artifacts, plans, selectedPlanId } = useAppContext()
+  const { artifacts, plans, selectedPlanId, updateArtifact } = useAppContext()
 
   const selectedPlan = useMemo(() => plans.find(p => p.id === selectedPlanId) || null, [plans, selectedPlanId])
 
@@ -153,7 +158,10 @@ export default function TaskOutputPanel() {
         
         <section className={`min-w-0 min-h-0 p-4 overflow-y-auto ${!selectedPlanId && artifacts.length > 0 ? 'flex-1' : 'w-full'}`}>
           {latestArtifact ? (
-            <ArtifactViewer artifact={latestArtifact} />
+            <ArtifactViewer 
+              artifact={latestArtifact} 
+              onContentChange={(content: string) => updateArtifact(latestArtifact.id, content)}
+            />
           ) : (
             <div className="text-sm text-gray-500">
               {selectedPlanId ? 'No artifacts available for this plan.' : 'Select a plan to view artifacts.'}

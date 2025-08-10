@@ -146,6 +146,17 @@ export class ApiClient {
     return this.listVersions(planId);
   }
 
+  async updatePlanVersion(
+    planId: string, 
+    version: number, 
+    payload: { content?: any }
+  ): Promise<ApiResponse<any>> {
+    return this.request(`/api/plans/${planId}/versions/${version}`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  }
+
   // Chat
   async getPlanChat(planId: string): Promise<ApiResponse<any>> {
     return this.request(`/api/plans/${planId}/chat`);

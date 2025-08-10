@@ -28,6 +28,7 @@ interface AppContextValue {
 
   // artifacts
   artifacts: PlanArtifact[]
+  updateArtifact: (artifactId: string, content: string) => Promise<void>
 }
 
 const AppContext = createContext<AppContextValue | undefined>(undefined)
@@ -335,6 +336,34 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     // This could be expanded to handle multiple concurrent requests
   }, [selectedPlanId, chatMessages, updatePlanName])
 
+  const updateArtifact = useCallback(async (artifactId: string, content: string) => {
+    // Find the artifact to update
+    const artifact = artifacts.find(a => a.id === artifactId)
+    if (!artifact || !selectedPlanId) return
+
+    try {
+      // Update the artifact via API
+      const res = await apiClient.updatePlanVersion(selectedPlanId, artifact.version || 1, {
+        content: content // Send the markdown content as a string
+      })
+
+      if (res.data) {
+        // Update local state
+        setArtifacts(prev => prev.map(a => 
+          a.id === artifactId 
+            ? { ...a, content: content }
+            : a
+        ))
+      } else if (res.error) {
+        console.error('Failed to update artifact:', res.error)
+        alert('Failed to update plan: ' + res.error)
+      }
+    } catch (error) {
+      console.error('Error updating artifact:', error)
+      alert('Error updating plan')
+    }
+  }, [artifacts, selectedPlanId])
+
   const value = useMemo<AppContextValue>(() => ({
     repositories,
     selectedRepositoryId,
@@ -352,7 +381,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     generatePlan,
     isLoading,
     artifacts,
-  }), [repositories, selectedRepositoryId, selectRepository, createRepository, deleteRepository, plans, selectedPlanId, selectPlan, createPlan, deletePlan, updatePlanName, chatMessages, sendMessage, generatePlan, isLoading, artifacts])
+    updateArtifact,
+  }), [repositories, selectedRepositoryId, selectRepository, createRepository, deleteRepository, plans, selectedPlanId, selectPlan, createPlan, deletePlan, updatePlanName, chatMessages, sendMessage, generatePlan, isLoading, artifacts, updateArtifact])
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }
