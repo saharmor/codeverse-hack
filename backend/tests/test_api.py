@@ -87,9 +87,9 @@ def test_api_endpoints():
         print(f"❌ Get plans failed: {response.status_code}")
         pytest.fail("Request failed")
 
-    # Create plan artifact
-    print("\n6. Testing plan artifact creation...")
-    artifact_data = {
+    # Create plan version
+    print("\n6. Testing plan version creation...")
+    version_data = {
         "plan_id": plan_id,
         "content": {
             "steps": [
@@ -102,17 +102,17 @@ def test_api_endpoints():
             "estimated_time": "5 days",
             "dependencies": ["database", "frontend framework"],
         },
-        "artifact_type": "feature_plan",
+        "version": 1,
     }
-    response = requests.post(f"{BASE_URL}/api/plans/{plan_id}/artifacts", json=artifact_data)
+    response = requests.post(f"{BASE_URL}/api/plans/{plan_id}/plan_versions", json=version_data)
     if response.status_code == 200:
-        print("✅ Plan artifact created successfully")
-        artifact = response.json()
-        artifact_id = artifact["id"]
-        print(f"Artifact ID: {artifact_id}")
-        print(json.dumps(artifact, indent=2))
+        print("✅ Plan version created successfully")
+        version = response.json()
+        version_id = version["id"]
+        print(f"Version ID: {version_id}")
+        print(json.dumps(version, indent=2))
     else:
-        print(f"❌ Plan artifact creation failed: {response.status_code}")
+        print(f"❌ Plan version creation failed: {response.status_code}")
         print(response.text)
         pytest.fail("Request failed")
 
@@ -147,7 +147,7 @@ def test_api_endpoints():
 Summary:
 - Repository ID: {repo_id}
 - Plan ID: {plan_id}
-- Artifact ID: {artifact_id}
+- Version ID: {version_id}
 - Chat ID: {chat_id}
 """
     )

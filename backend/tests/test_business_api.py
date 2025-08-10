@@ -67,9 +67,9 @@ def test_plan_generation():
     plan_id = plan["id"]
     print(f"✅ Plan created: {plan_id}")
 
-    # Create initial plan artifact (optional)
-    print("\n3. Creating initial plan artifact...")
-    artifact_data = {
+    # Create initial plan version (optional)
+    print("\n3. Creating initial plan version...")
+    version_data = {
         "plan_id": plan_id,
         "content": {
             "overview": "Initial plan for AI integration",
@@ -80,16 +80,16 @@ def test_plan_generation():
             ],
             "status": "draft",
         },
-        "artifact_type": "feature_plan",
+        "version": 1,
     }
-    response = requests.post(f"{BASE_URL}/api/plans/{plan_id}/artifacts", json=artifact_data)
+    response = requests.post(f"{BASE_URL}/api/plans/{plan_id}/plan_versions", json=version_data)
     if response.status_code != 200:
-        print(f"❌ Artifact creation failed: {response.status_code}")
+        print(f"❌ Version creation failed: {response.status_code}")
         print(response.text)
         pytest.fail("Request failed")
 
-    artifact = response.json()
-    print(f"✅ Artifact created: {artifact['id']}")
+    version = response.json()
+    print(f"✅ Version created: {version['id']}")
 
     # Create chat session
     print("\n4. Creating chat session...")
