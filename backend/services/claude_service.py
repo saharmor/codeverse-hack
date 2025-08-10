@@ -24,6 +24,7 @@ except Exception:  # pragma: no cover
 
 
 # Section indicator headers used across prompts and streaming logic
+PLAN_NAME_HEADER = "# Plan name"
 PLAN_HEADER = "# Plan draft"
 CLARIFY_HEADER = "# Clarifying questions"
 
@@ -32,11 +33,26 @@ SYSTEM_PROMPT = f"""
 You are **Claude Code**, an AI agent assistant specialized in helping developers draft high-quality implementation plans. Given the user's raw notes below, produce the output using the following strict format:
 
 Formatting requirements (critical):
-- The very first line of your response must be exactly: `{PLAN_HEADER}`.
+- The very first line of your response must be exactly: `{PLAN_NAME_HEADER}`.
 - Do not include anything before that first line (no preface, greetings, or metadata).
+- On the next line, write a concise, descriptive name for this implementation plan.
+- Follow with a blank line, then a section titled `{PLAN_HEADER}`.
 - Under that heading, write the plan content in Markdown.
 - Conclude with a section titled `{CLARIFY_HEADER}`.
 - Do not use emojis in your response.
+
+Plan name guidelines:
+- Suggest a clear, descriptive name that captures the essence of the project
+- Keep it concise but informative (e.g., "Modern Task Management Web App", "Real-time Collaboration Platform")
+- Focus on the main purpose and key characteristics
+- EXAMPLE FORMAT:
+  ```
+  # Plan name
+  Smart Developer Task Management Platform
+  
+  # Plan draft
+  [plan content here]
+  ```
 
 Plan content guidelines:
 - Produce a clear, organized outline breaking down the development into modules or tasks.
@@ -58,11 +74,26 @@ You will be provided with:
 3. **User Raw Notes** - Additional context, answers, or modifications from the user
 
 Formatting requirements (critical):
-- The very first line of your response must be exactly: `{PLAN_HEADER}`.
+- The very first line of your response must be exactly: `{PLAN_NAME_HEADER}`.
 - Do not include anything before that first line (no preface, greetings, or metadata).
+- On the next line, write a refined, descriptive name for this implementation plan.
+- Follow with a blank line, then a section titled `{PLAN_HEADER}`.
 - Under that heading, write the updated plan content in Markdown.
 - Conclude with a section titled `{CLARIFY_HEADER}` with the remaining/open questions only.
 - Do not use emojis in your response.
+
+Updated plan name guidelines:
+- Refine the plan name based on the updated requirements and context
+- Keep it concise but informative, reflecting any new insights or scope changes
+- Focus on the main purpose and key characteristics of the refined plan
+- EXAMPLE FORMAT:
+  ```
+  # Plan name
+  CodeVerse - AI-Powered Development Platform
+  
+  # Plan draft
+  [updated plan content here]
+  ```
 
 Updated plan guidelines:
 - Review the previous plan and incorporate insights from the user's raw notes.
@@ -141,6 +172,7 @@ def is_first_iteration(current_plan: Optional[str]) -> bool:
 
 
 class ClaudeOutputType(str, Enum):
+    PLAN_NAME = "plan_name"
     PLAN = "plan"
     CLARIFY_QUESTIONS = "clarify_questions"
 
@@ -187,7 +219,7 @@ async def generate_plan(
     current_type: Optional[ClaudeOutputType] = None
     buffer: str = ""
     # To guard against splitting a header across chunk boundaries, retain a small tail
-    max_header_len = max(len(PLAN_HEADER), len(CLARIFY_HEADER))
+    max_header_len = max(len(PLAN_NAME_HEADER), len(PLAN_HEADER), len(CLARIFY_HEADER))
     tail_keep = max(0, max_header_len - 1)
 
     async for chunk in _query_claude_stream(
@@ -203,9 +235,12 @@ async def generate_plan(
         while True:
             # Initialize current section when first header appears
             if current_type is None:
+                plan_name_idx = buffer.find(PLAN_NAME_HEADER)
                 plan_idx = buffer.find(PLAN_HEADER)
                 clarify_idx = buffer.find(CLARIFY_HEADER)
                 candidates = []
+                if plan_name_idx != -1:
+                    candidates.append((plan_name_idx, ClaudeOutputType.PLAN_NAME))
                 if plan_idx != -1:
                     candidates.append((plan_idx, ClaudeOutputType.PLAN))
                 if clarify_idx != -1:
@@ -228,14 +263,42 @@ async def generate_plan(
                 buffer = buffer[first_idx:]
                 # Continue with known current_type
 
-            # With a known current_type, look for a boundary to the other section
+            # With a known current_type, look for a boundary to the other sections
+            if current_type == ClaudeOutputType.PLAN_NAME:
+                # Look for next section (either plan or clarify)
+                plan_idx = buffer.find(PLAN_HEADER)
+                clarify_idx = buffer.find(CLARIFY_HEADER)
+                next_candidates = []
+                if plan_idx != -1:
+                    next_candidates.append((plan_idx, ClaudeOutputType.PLAN))
+                if clarify_idx != -1:
+                    next_candidates.append((clarify_idx, ClaudeOutputType.CLARIFY_QUESTIONS))
+                
+                if next_candidates:
+                    next_candidates.sort(key=lambda x: x[0])
+                    next_idx, next_type = next_candidates[0]
+                    plan_name_part = buffer[:next_idx]
+                    if plan_name_part:
+                        yield (ClaudeOutputType.PLAN_NAME, plan_name_part)
+                    buffer = buffer[next_idx:]
+                    current_type = next_type
+                    continue
+                else:
+                    # No boundary yet; flush safe portion leaving a small tail
+                    if len(buffer) > tail_keep:
+                        emit_text = buffer[:-tail_keep] if tail_keep > 0 else buffer
+                        if emit_text:
+                            yield (ClaudeOutputType.PLAN_NAME, emit_text)
+                        buffer = buffer[-tail_keep:] if tail_keep > 0 else ""
+                    break
+
             if current_type == ClaudeOutputType.PLAN:
-                next_idx = buffer.find(CLARIFY_HEADER)
-                if next_idx != -1:
-                    plan_part = buffer[:next_idx]
+                clarify_idx = buffer.find(CLARIFY_HEADER)
+                if clarify_idx != -1:
+                    plan_part = buffer[:clarify_idx]
                     if plan_part:
                         yield (ClaudeOutputType.PLAN, plan_part)
-                    buffer = buffer[next_idx:]
+                    buffer = buffer[clarify_idx:]
                     current_type = ClaudeOutputType.CLARIFY_QUESTIONS
                     # Loop to process remaining buffer under new type
                     continue
@@ -249,14 +312,23 @@ async def generate_plan(
                     break
 
             if current_type == ClaudeOutputType.CLARIFY_QUESTIONS:
-                # Normally the last section; still guard if plan header appears again
-                next_idx = buffer.find(PLAN_HEADER)
-                if next_idx != -1:
+                # Normally the last section; still guard if other headers appear again
+                plan_name_idx = buffer.find(PLAN_NAME_HEADER)
+                plan_idx = buffer.find(PLAN_HEADER)
+                next_candidates = []
+                if plan_name_idx != -1:
+                    next_candidates.append((plan_name_idx, ClaudeOutputType.PLAN_NAME))
+                if plan_idx != -1:
+                    next_candidates.append((plan_idx, ClaudeOutputType.PLAN))
+                    
+                if next_candidates:
+                    next_candidates.sort(key=lambda x: x[0])
+                    next_idx, next_type = next_candidates[0]
                     clarify_part = buffer[:next_idx]
                     if clarify_part:
                         yield (ClaudeOutputType.CLARIFY_QUESTIONS, clarify_part)
                     buffer = buffer[next_idx:]
-                    current_type = ClaudeOutputType.PLAN
+                    current_type = next_type
                     continue
                 else:
                     if len(buffer) > tail_keep:
