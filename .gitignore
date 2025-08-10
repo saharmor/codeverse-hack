@@ -37,6 +37,7 @@ src-tauri/target/
 src-tauri/Cargo.lock
 
 # Python
+backend/codeverse.db
 backend/.venv/
 backend/__pycache__/
 backend/**/__pycache__/
@@ -93,6 +94,9 @@ backend/*.temp
 *.swp
 *.swo
 *~
+
+# Dummy repositories for testing
+temp-repos/
 
 # OS
 .DS_Store
