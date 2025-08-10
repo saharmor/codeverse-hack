@@ -6,13 +6,15 @@ interface VoiceRecorderProps {
   onCancel?: () => void
   autoStart?: boolean
   inline?: boolean
+  busy?: boolean
 }
 
 export default function VoiceRecorder({
   onAccept,
   onCancel,
   autoStart = false,
-  inline = false
+  inline = false,
+  busy = false,
 }: VoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false)
   const [hasRecording, setHasRecording] = useState(false)
@@ -29,11 +31,13 @@ export default function VoiceRecorder({
   const animationFrameRef = useRef<number | null>(null)
   const chunksRef = useRef<BlobPart[]>([])
   const floatChunksRef = useRef<Float32Array[]>([])
+  const timerRef = useRef<number | null>(null)
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
 
-  // Initialize bars array
+  // Initialize bars array (hidden until recording)
   useEffect(() => {
     const barCount = inline ? 40 : 24
-    setBars(new Array(barCount).fill(8))
+    setBars(new Array(barCount).fill(0))
   }, [inline])
 
   const startAudioAnalysis = () => {
@@ -64,8 +68,8 @@ export default function VoiceRecorder({
       const barCount = inline ? 40 : 24
       const newBars: number[] = []
 
-      // Use more frequency data for better visualization
-      const usableRange = Math.min(bufferLength / 2, 128)
+      // Use frequency subset for smoother look
+      const usableRange = Math.min(bufferLength / 2, 96)
 
       for (let i = 0; i < barCount; i++) {
         // Better frequency mapping
@@ -95,9 +99,9 @@ export default function VoiceRecorder({
         const randomness = 0.05 * Math.random()
         normalizedValue = Math.min(1, normalizedValue + randomness)
 
-        // Convert to pixel height
-        const minHeight = 6
-        const maxHeight = inline ? 36 : 32
+        // Convert to pixel height (GPT-like compact waveform)
+        const minHeight = 4
+        const maxHeight = inline ? 24 : 20
         const height = Math.round(minHeight + (normalizedValue * (maxHeight - minHeight)))
 
         newBars.push(height)
@@ -149,7 +153,7 @@ export default function VoiceRecorder({
 
       const analyser = audioContext.createAnalyser()
       analyser.fftSize = 256 // Smaller for better performance
-      analyser.smoothingTimeConstant = 0.9 // More smoothing
+      analyser.smoothingTimeConstant = 0.85 // Slightly less smoothing for responsiveness
       analyser.minDecibels = -100
       analyser.maxDecibels = -30
       analyserRef.current = analyser
@@ -176,11 +180,18 @@ export default function VoiceRecorder({
       }
 
       setIsRecording(true)
+      // Show waveform immediately
+      const barCount = inline ? 40 : 24
+      setBars(new Array(barCount).fill(4))
 
       // Start audio visualization
       startAudioAnalysis()
 
       console.log('Recording started successfully')
+      // start seconds timer
+      setRecordingSeconds(0)
+      if (timerRef.current) window.clearInterval(timerRef.current)
+      timerRef.current = window.setInterval(() => setRecordingSeconds((s) => s + 1), 1000)
 
     } catch (error) {
       console.error('Failed to start recording:', error)
@@ -204,6 +215,10 @@ export default function VoiceRecorder({
     setHasRecording(floatChunksRef.current.length > 0)
     setIsRecording(false)
     stopAudioAnalysis()
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current)
+      timerRef.current = null
+    }
   }
 
   function encodeWavFromFloat32(chunks: Float32Array[], sampleRate: number): Blob {
@@ -304,6 +319,10 @@ export default function VoiceRecorder({
     floatChunksRef.current = []
 
     stopAudioAnalysis()
+    if (timerRef.current) {
+      window.clearInterval(timerRef.current)
+      timerRef.current = null
+    }
 
     // Clean up media stream
     if (streamRef.current) {
@@ -354,79 +373,56 @@ export default function VoiceRecorder({
   if (inline) {
     return (
       <div className="w-full max-w-md mx-auto p-4">
-        <div className="w-full h-[56px] rounded-2xl border-2 border-gray-200 bg-white px-4 flex items-center justify-between overflow-hidden shadow-sm">
-          {/* Waveform bars */}
-          <div className="flex items-end gap-[1.5px] h-[36px] flex-1">
-            {bars.map((height, index) => (
-              <div
-                key={index}
-                className={`w-[2.5px] rounded-sm transition-all duration-75 ${
-                  isRecording
-                    ? 'bg-gradient-to-t from-purple-600 to-purple-400'
-                    : hasRecording
-                      ? 'bg-gradient-to-t from-green-600 to-green-400'
-                      : 'bg-gray-300'
-                }`}
-                style={{
-                  height: `${height}px`,
-                  opacity: isRecording ? 0.7 + (audioLevel * 0.3) : 0.6
-                }}
-              />
-            ))}
-          </div>
-
-          {/* Control buttons */}
-          <div className="flex items-center gap-2 pl-3">
-            {!isRecording && !hasRecording && (
+        <div className="w-full h-[36px] rounded-2xl px-1 flex items-center gap-2 overflow-hidden">
+          {isRecording ? (
+            <>
+              {/* Left cancel */}
+              <button
+                onClick={cancelRecording}
+                className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 transition-colors"
+                aria-label="Cancel recording"
+              >
+                <X className="w-4 h-4" />
+              </button>
+              {/* Waveform */}
+              <div className="flex-1 flex items-end gap-[1px] h-[20px] w-full text-gray-400">
+                {bars.map((height, index) => (
+                  <div
+                    key={index}
+                    className={`w-[2.5px] rounded-sm transition-all duration-75 ${isRecording ? 'bg-gray-500' : 'bg-transparent'}`}
+                    style={{ height: `${height}px`, opacity: 0.85 }}
+                  />
+                ))}
+              </div>
+              {/* Timer */}
+              <div className="text-xs text-gray-700 tabular-nums w-[40px] text-right">{`${Math.floor(recordingSeconds / 60)}:${String(recordingSeconds % 60).padStart(2, '0')}`}</div>
+              {/* Right confirm */}
+              <button
+                onClick={acceptRecording}
+                className="p-2 rounded-full bg-black text-white hover:bg-black/90 transition-colors"
+                aria-label="Accept recording"
+              >
+                <Check className="w-4 h-4" />
+              </button>
+            </>
+          ) : (
+            busy ? (
+              <div className="p-2">
+                <div className="w-6 h-6 border-2 border-gray-300 border-t-gray-700 rounded-full animate-spin" aria-label="Processing" />
+              </div>
+            ) : (
               <button
                 onClick={startRecording}
-                className="p-2 rounded-full bg-blue-50 hover:bg-blue-100 text-blue-700 transition-colors"
+                className="p-2 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
                 aria-label="Start recording"
               >
                 <Mic className="w-4 h-4" />
               </button>
-            )}
-
-            {(isRecording || hasRecording) && (
-              <>
-                <button
-                  onClick={acceptRecording}
-                  className="p-2 rounded-full bg-green-50 hover:bg-green-100 text-green-700 transition-colors"
-                  aria-label="Accept recording"
-                >
-                  <Check className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={cancelRecording}
-                  className="p-2 rounded-full bg-red-50 hover:bg-red-100 text-red-700 transition-colors"
-                  aria-label="Cancel recording"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Status indicator */}
-        <div className="mt-3 text-center">
-          {isRecording && (
-            <div className="flex items-center justify-center gap-2 text-sm text-purple-600">
-              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-              Recording... (Level: {(audioLevel * 100).toFixed(1)}%)
-            </div>
-          )}
-          {hasRecording && !isRecording && (
-            <div className="text-sm text-green-600">
-              Recording complete - accept or cancel
-            </div>
-          )}
-          {!isRecording && !hasRecording && (
-            <div className="text-sm text-gray-500">
-              Click microphone to start recording
-            </div>
+            )
           )}
         </div>
+
+        {/* No status text per spec */}
 
         {permissionDenied && (
           <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -453,23 +449,17 @@ export default function VoiceRecorder({
         </button>
       )}
 
-      {/* Waveform display */}
-      {(isRecording || hasRecording) && (
-        <div className="flex-1 min-w-[200px] max-w-[400px] h-12 bg-white border-2 border-gray-200 rounded-xl px-4 flex items-center overflow-hidden shadow-sm">
-          <div className="flex items-end gap-[2px] h-full w-full justify-center">
+      {/* Waveform display (only while recording) */}
+      {isRecording && (
+        <div className="flex-1 min-w-[200px] max-w-[400px] h-8 bg-white border border-gray-200 rounded-xl px-2 flex items-center overflow-hidden shadow-sm">
+          <div className="flex items-end gap-[1px] h-[20px] w-full justify-center">
             {bars.map((height, index) => (
               <div
                 key={index}
-                className={`w-[3px] rounded-sm transition-all duration-100 ${
-                  isRecording
-                    ? 'bg-gradient-to-t from-purple-600 to-purple-400'
-                    : hasRecording
-                      ? 'bg-gradient-to-t from-green-600 to-green-400'
-                      : 'bg-gray-300'
-                }`}
+                className={`w-[3px] rounded-sm transition-all duration-100 bg-purple-600/80`}
                 style={{
                   height: `${height}px`,
-                  opacity: isRecording ? 0.6 + (audioLevel * 0.4) : 0.7
+                  opacity: 0.85
                 }}
               />
             ))}
@@ -497,21 +487,7 @@ export default function VoiceRecorder({
         </div>
       )}
 
-      {/* Status text */}
-      <div className="text-sm text-gray-600 min-w-[100px]">
-        {isRecording && (
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-            Recording...
-          </div>
-        )}
-        {hasRecording && !isRecording && (
-          <span className="text-green-600">Ready to send</span>
-        )}
-        {!isRecording && !hasRecording && (
-          <span>Click to record</span>
-        )}
-      </div>
+      {/* No status text */}
 
       {permissionDenied && (
         <div className="absolute top-full left-0 right-0 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">

@@ -16,11 +16,11 @@ function Avatar({ role }: { role: 'user' | 'assistant' }) {
 }
 
 export default function ChatWindow() {
-  const { chatMessages, sendMessage, generatePlan, plans, selectedPlanId, isLoading } = useAppContext()
+  const { chatMessages, sendMessage, plans, selectedPlanId, isLoading } = useAppContext()
   const [input, setInput] = useState('')
   const [voiceBusy, setVoiceBusy] = useState(false)
-  const [inlineRecording, setInlineRecording] = useState(false)
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 
   const selectedPlan = useMemo(() => plans.find(p => p.id === selectedPlanId) || null, [plans, selectedPlanId])
 
@@ -30,10 +30,18 @@ export default function ChatWindow() {
     }
   }, [chatMessages])
 
+  // Auto-resize textarea (starts at 1 row, grows as needed up to ~10 rows)
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    const maxPx = 10 * 24
+    el.style.height = Math.min(maxPx, el.scrollHeight) + 'px'
+  }, [input])
+
   const handleSend = () => {
     if (!input.trim()) return
-    // Use generatePlan instead of sendMessage for plan generation
-    generatePlan(input)
+    sendMessage(input)
     setInput('')
   }
 
@@ -52,8 +60,11 @@ export default function ChatWindow() {
       if (!selectedPlanId) throw new Error('No plan selected')
       const result = await transcribeAudio(selectedPlanId, blob)
       const text = result.corrected_text || result.raw_text || ''
-      setInput(text)
-      setInlineRecording(false)
+      setInput(prev => {
+        if (!prev) return text
+        const spacer = prev.endsWith(' ') ? '' : ' '
+        return prev + spacer + text
+      })
     } catch (err: any) {
       console.error('Transcription failed:', err?.message || err)
       if (err?.details) console.error('Server details:', err.details)
@@ -96,40 +107,35 @@ export default function ChatWindow() {
         <div className="flex items-end gap-2">
           <div className="flex-1">
             <label htmlFor="composer" className="sr-only">Message</label>
-            {inlineRecording ? (
-              <VoiceRecorder inline autoStart onAccept={onVoiceAccept} onCancel={() => setInlineRecording(false)} />
-            ) : (
+            <div className="w-full rounded-2xl border border-gray-200 bg-white overflow-hidden">
               <textarea
                 id="composer"
+                ref={textareaRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={onKeyDown}
-                placeholder="Message Claude..."
-                className="w-full resize-none max-h-40 min-h-[44px] rounded-2xl border border-gray-200 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                placeholder="Plan anything"
+                rows={1}
+                className="w-full resize-none max-h-40 px-4 py-2 text-sm leading-6 focus:outline-none"
               />
-            )}
+              <div className="px-2 py-1 flex items-center justify-between bg-white">
+                <div className="flex-1 min-w-0">
+                  <VoiceRecorder inline onAccept={onVoiceAccept} onCancel={() => {}} busy={voiceBusy} />
+                </div>
+                <div className="pl-3 flex items-center gap-2">
+                  <button
+                    onClick={handleSend}
+                    disabled={!input.trim() || voiceBusy}
+                    className="inline-flex items-center justify-center bg-purple-600 text-white w-10 h-10 rounded-full disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    aria-label="Send message"
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
-          <div className="flex flex-col items-stretch gap-2">
-            {!inlineRecording && (
-              <button
-                onClick={() => setInlineRecording(true)}
-                disabled={voiceBusy}
-                className="p-2 rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700"
-                aria-label="Start voice"
-              >
-                <Mic className="w-4 h-4" />
-              </button>
-            )}
-            <button
-              onClick={handleSend}
-              disabled={!input.trim() || voiceBusy || inlineRecording}
-              className="inline-flex items-center justify-center gap-2 bg-purple-600 text-white px-4 py-2 rounded-xl disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              aria-label="Send message"
-            >
-              <Send className="w-4 h-4" />
-              <span className="text-sm">Send</span>
-            </button>
-          </div>
+          {/* Right side controls column removed; send is in second row */}
         </div>
         <p className="mt-2 text-[11px] text-gray-500">
           Messages may be inaccurate. Verify important information.
