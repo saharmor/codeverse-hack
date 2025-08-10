@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from config import settings
 from database import get_db
 from models import ChatSession, Plan, Repository
-from routers import business, chat, plan_versions, plans, repositories, transcribe
+from routers import business, chat, plans, repositories, transcribe
 from schemas import ChatSession as ChatSessionSchema
 from schemas import ChatSessionCreate, ChatSessionUpdate
 from schemas import Plan as PlanSchema
@@ -36,7 +36,6 @@ app.add_middleware(
 # Include routers
 app.include_router(repositories.router)
 app.include_router(plans.router)
-app.include_router(plan_versions.router)
 app.include_router(chat.router)
 app.include_router(business.router)
 app.include_router(transcribe.router)

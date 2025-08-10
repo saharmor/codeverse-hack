@@ -148,19 +148,23 @@ li {
                     },
                     {
                         "role": "assistant",
+                        "type": "clarifying_questions",
                         "content": (
-                            "I'd be happy to help you add dark mode to your todo app! "
-                            "Let me analyze your current code and create a comprehensive "
-                            "plan for implementing this feature."
+                            "1. Do you want the dark mode toggle to be in the header, sidebar, or settings panel?\n"
+                            "2. Should the theme preference be saved in localStorage or in a user profile?\n"
+                            "3. Are there specific colors or design tokens you'd prefer for the dark theme?\n"
+                            "4. Do you need the dark mode to respect the user's system theme preference?\n"
+                            "5. Should the transition between themes be instant or animated?"
                         ),
                     },
-                    {"role": "user", "content": "What's the best approach for theme switching in React?"},
+                    {"role": "user", "content": "Put the toggle in the header and save to localStorage. Use system colors."},
                     {
                         "role": "assistant",
+                        "type": "clarifying_questions",
                         "content": (
-                            "For React apps, I recommend using React Context for theme "
-                            "management combined with CSS custom properties. This approach "
-                            "provides good performance and maintainability."
+                            "1. Should the toggle be a simple button, switch, or icon?\n"
+                            "2. How should incomplete vs completed todos look different in dark mode?\n"
+                            "3. Do you want to support custom themes beyond just light/dark in the future?"
                         ),
                     },
                 ],
@@ -181,10 +185,14 @@ li {
                     },
                     {
                         "role": "assistant",
+                        "type": "clarifying_questions",
                         "content": (
-                            "Great idea! Adding authentication will make your app much "
-                            "more practical. I'll help you implement a complete auth "
-                            "system."
+                            "1. Do you want to implement your own auth system or use a service like Auth0/Firebase?\n"
+                            "2. What authentication methods do you prefer: email/password, social login, or both?\n"
+                            "3. Should users be able to register themselves or will you invite them?\n"
+                            "4. Do you need password reset functionality?\n"
+                            "5. Should user sessions persist across browser restarts?\n"
+                            "6. Do you want to migrate existing todos to a default user or start fresh?"
                         ),
                     },
                 ],
@@ -316,10 +324,14 @@ if __name__ == '__main__':
                     },
                     {
                         "role": "assistant",
+                        "type": "clarifying_questions",
                         "content": (
-                            "Absolutely! Adding ML capabilities would make your "
-                            "analyzer much more powerful. Let me create a plan for "
-                            "integrating scikit-learn."
+                            "1. What types of ML tasks are you most interested in: classification, regression, clustering, or dimensionality reduction?\n"
+                            "2. Do you want supervised learning (with labeled training data) or unsupervised learning capabilities?\n"
+                            "3. Should the ML models be pre-trained or trained on the loaded data?\n"
+                            "4. Do you need feature engineering tools for data preprocessing?\n"
+                            "5. How important is model interpretability vs accuracy for your use case?\n"
+                            "6. Would you like automated model selection or manual model configuration?"
                         ),
                     },
                 ],
@@ -456,10 +468,14 @@ module.exports = app;
                     },
                     {
                         "role": "assistant",
+                        "type": "clarifying_questions",
                         "content": (
-                            "For a Node.js Express app, MongoDB with Mongoose is a "
-                            "great choice. It's flexible, easy to set up, and works "
-                            "well with JavaScript objects."
+                            "1. Do you prefer SQL (PostgreSQL, MySQL) or NoSQL (MongoDB, DynamoDB) databases?\n"
+                            "2. What's your expected data volume and concurrent user load?\n"
+                            "3. Do you need ACID transactions or is eventual consistency acceptable?\n"
+                            "4. Are you planning to deploy on cloud services or on-premise?\n"
+                            "5. Do you need real-ptime features like subscriptions or change streams?\n"
+                            "6. Should the database migration preserve any existing in-memory data structure?"
                         ),
                     },
                 ],

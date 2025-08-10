@@ -10,21 +10,23 @@ from database import get_db
 from models import ChatSession, Plan, PlanVersion, Repository
 
 # ChatMessage schema available if needed for future use
-from services.claude_service import _query_claude_stream, generate_plan_business
+from services.claude_service import generate_plan
+from services.claude_prompts import ClaudeOutputType
 
 router = APIRouter(prefix="/api/business", tags=["business-logic"])
 
 
 @router.post("/plans/{plan_id}/generate")
-async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any], db: AsyncSession = Depends(get_db)):
+async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any],
+                                  db: AsyncSession = Depends(get_db)):
     """
     Main business logic endpoint for plan generation.
 
     Expected request_data:
     {
         "user_message": "string - latest user question/response",
-        "plan_artifact": "..." - current plan version content (optional),
-        "chat_messages": [...] - recent chat history (optional)
+        "plan_artifact": {...} - current plan artifact (optional),
+        "chat_messages": [...] - recent chat history (optional),
     }
     """
 
@@ -52,10 +54,16 @@ async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any], db:
         existing_plan_version = plan_version_override
     else:
         result = await db.execute(select(PlanVersion).where(PlanVersion.plan_id == plan_id))
-        plan_version = result.scalar_one_or_none()
-        if plan_version:
-            existing_plan_version = plan_version.content
+        artifact = result.scalar_one_or_none()
+        if artifact and artifact.content:
+            # Handle different content structures safely
+            if isinstance(artifact.content, dict):
+                existing_artifact = json.dumps(artifact.content)
+            else:
+                existing_artifact = str(artifact.content)
 
+    existing_artifact = None  # TODO SAHAR test for initial plan
+    
     # Get chat history
     chat_history = []
     chat_override = request_data.get("chat_messages")
@@ -67,63 +75,31 @@ async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any], db:
         if chat_session and chat_session.messages:
             chat_history = chat_session.messages
 
-    # Prepare data for generate_plan function
-    plan_context = {
-        "plan": plan,
-        "repository": repository,
-        "existing_plan_version": existing_plan_version,
-        "chat_history": chat_history,
-        "user_message": user_message,
-    }
-
-    # Generate dynamic plan name if needed
-    should_update_name = (
-        plan.name in ["New Plan", ""]
-        or plan.name is None
-        or user_message.strip().lower().startswith(("create", "build", "implement", "add", "develop"))
-    )
+    # Extract previous clarifying questions from chat history
+    prev_clarifying_questions = None
+    # Look through chat history from most recent to oldest
+    for message in reversed(chat_history):
+        if (isinstance(message, dict) and 
+            message.get("role") == "assistant" and 
+            message.get("type") == "clarifying_questions"):
+            prev_clarifying_questions = str(message.get("content", ""))
+            break
 
     # Stream the response from Claude
     async def stream_response():
         try:
-            # Optionally generate and send updated plan name first
-            if should_update_name:
-                try:
-                    name_prompt = f"""
-Based on this user request: "{user_message}"
-And repository: {repository.name} at {repository.path}
-
-Generate a concise, descriptive name (2-4 words) for this development plan.
-Examples: "User Authentication", "Chat Integration", "API Dashboard"
-
-Respond with only the name, no quotes or extra text.
-"""
-                    name_chunks = []
-                    async for chunk in _query_claude_stream(
-                        working_directory=repository.path,
-                        system_prompt=None,
-                        prompt=name_prompt,
-                    ):
-                        if chunk:
-                            name_chunks.append(chunk)
-
-                    new_name = "".join(name_chunks).strip()
-                    if new_name and new_name != plan.name:
-                        # Update plan name in database
-                        plan.name = new_name
-                        await db.commit()
-                        await db.refresh(plan)
-
-                        # Send name update to client
-                        yield f"data: {json.dumps({'type': 'name_update', 'name': new_name})}\n\n"
-
-                except Exception as e:
-                    print(f"Error generating dynamic plan name: {e}")
-                    # Continue with plan generation even if name generation fails
-
-            async for chunk in generate_plan_business(plan_context):
-                # Send each chunk as JSON
-                yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
+            async for output_type, chunk in generate_plan(
+                project_dir=repository.path,
+                user_raw_notes=user_message,
+                prev_clarifying_questions=prev_clarifying_questions,
+                current_plan=existing_artifact,
+            ):
+                # Send each chunk in the requested format
+                chunk_data = {
+                    "chunk": chunk,
+                    "output_type": output_type.value
+                }
+                yield f"data: {json.dumps(chunk_data)}\n\n"
 
             # Send completion signal
             yield f"data: {json.dumps({'type': 'complete'})}\n\n"

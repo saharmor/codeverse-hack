@@ -95,7 +95,7 @@ def is_first_iteration(current_plan: Optional[str]) -> bool:
 async def generate_plan(
     project_dir: str,
     user_raw_notes: str,
-    prev_clarfying_questions: Optional[str],
+    prev_clarifying_questions: Optional[str],
     current_plan: Optional[str],
 ) -> AsyncGenerator[Tuple[ClaudeOutputType, str], None]:
     """Stream a plan for the given project based on raw notes.
@@ -120,9 +120,9 @@ async def generate_plan(
             prompt_parts.append(current_plan)
             prompt_parts.append("\n\n")
 
-        if prev_clarfying_questions:
+        if prev_clarifying_questions:
             prompt_parts.append("## Previous Clarifying Questions\n")
-            prompt_parts.append(prev_clarfying_questions)
+            prompt_parts.append(prev_clarifying_questions)
             prompt_parts.append("\n\n")
 
         prompt_parts.append("## User Raw Notes\n")
@@ -167,14 +167,22 @@ async def generate_plan(
                 candidates.sort(key=lambda x: x[0])
                 first_idx, first_type = candidates[0]
 
-                # Emit any preamble (rare) as belonging to the first section we see
-                if first_idx > 0:
-                    preamble = buffer[:first_idx]
-                    if preamble:
-                        yield (first_type, preamble)
-
+                # Skip any preamble content - only emit content AFTER we see section headers
+                # This ensures we don't incorrectly categorize content that appears before "# Plan name"
                 current_type = first_type
-                buffer = buffer[first_idx:]
+                
+                # Skip past the header itself, not just to where it starts
+                header_text = None
+                for section in om.get_all_sections():
+                    if ClaudeOutputType(section.name) == first_type:
+                        header_text = section.header
+                        break
+                
+                if header_text:
+                    header_end_idx = first_idx + len(header_text)
+                    buffer = buffer[header_end_idx:]
+                else:
+                    buffer = buffer[first_idx:]
                 # Continue with known current_type
 
             # With a known current_type, look for boundaries to other sections
@@ -192,13 +200,24 @@ async def generate_plan(
                 next_candidates.sort(key=lambda x: x[0])
                 next_idx, next_type = next_candidates[0]
 
-                # Emit the current section content
+                # Emit the current section content (up to the next header)
                 current_part = buffer[:next_idx]
                 if current_part:
                     yield (current_type, current_part)
 
-                # Move to next section
-                buffer = buffer[next_idx:]
+                # Move to next section, skipping past the header text
+                header_text = None
+                for section in om.get_all_sections():
+                    if ClaudeOutputType(section.name) == next_type:
+                        header_text = section.header
+                        break
+                
+                if header_text:
+                    header_end_idx = next_idx + len(header_text)
+                    buffer = buffer[header_end_idx:]
+                else:
+                    buffer = buffer[next_idx:]
+                    
                 current_type = next_type
                 continue
             else:
@@ -270,147 +289,4 @@ async def get_relevant_vocabulary(
     }
 
 
-# -----------------------------------------------------------------------------
-# Backwards-compatible API for business router (streams raw strings)
-# -----------------------------------------------------------------------------
 
-
-def _build_user_notes_from_context(plan_context: Dict[str, object]) -> Tuple[str, Optional[str], Optional[str]]:
-    """Construct rich user notes and optional previous sections from plan_context.
-
-    Returns (user_notes, prev_clarifying_questions, current_plan_text)
-    """
-    plan = plan_context.get("plan")
-    repository = plan_context.get("repository")
-    existing_plan_version = plan_context.get("existing_plan_version")
-    chat_history = plan_context.get("chat_history", [])
-    user_message = plan_context.get("user_message")
-
-    parts: List[str] = ["# Code Planning Session", ""]
-
-    # Basic context
-    if plan is not None:
-        try:
-            parts.extend(
-                [
-                    "## Plan Context",
-                    f"Name: {getattr(plan, 'name', '')}",
-                    f"Target Branch: {getattr(plan, 'target_branch', '')}",
-                    f"Description: {getattr(plan, 'description', '') or 'No description provided'}",
-                    "",
-                ]
-            )
-        except Exception:
-            pass
-
-    if repository is not None:
-        try:
-            parts.extend(
-                [
-                    "## Repository",
-                    f"Name: {getattr(repository, 'name', '')}",
-                    f"Path: {getattr(repository, 'path', '')}",
-                    "",
-                ]
-            )
-        except Exception:
-            pass
-
-    # Existing plan version as context
-    current_plan_text: Optional[str] = None
-    prev_questions_text: Optional[str] = None
-
-    if existing_plan_version is not None:
-        if isinstance(existing_plan_version, str):
-            # Handle string plan versions (markdown content from frontend)
-            parts.extend(
-                [
-                    "## Current Plan (Markdown)",
-                    "```markdown",
-                    existing_plan_version,
-                    "```",
-                    "",
-                ]
-            )
-            current_plan_text = existing_plan_version
-        elif isinstance(existing_plan_version, dict):
-            # Handle dictionary plan versions (legacy format)
-            try:
-                parts.extend(
-                    [
-                        "## Current Plan Version",
-                        "```json",
-                        json.dumps(existing_plan_version, indent=2),
-                        "```",
-                        "",
-                    ]
-                )
-            except Exception:
-                pass
-            # Try extracting structured fields if present
-            for key in ("clarifying_questions", "questions"):
-                if key in existing_plan_version and isinstance(existing_plan_version[key], (list, str)):
-                    prev_questions_text = (
-                        "\n".join(existing_plan_version[key])
-                        if isinstance(existing_plan_version[key], list)
-                        else str(existing_plan_version[key])
-                    )
-                    break
-            for key in ("plan", "draft", "overview"):
-                if key in existing_plan_version and isinstance(existing_plan_version[key], (dict, list, str)):
-                    try:
-                        current_plan_text = (
-                            json.dumps(existing_plan_version[key], indent=2)
-                            if isinstance(existing_plan_version[key], (dict, list))
-                            else str(existing_plan_version[key])
-                        )
-                    except Exception:
-                        current_plan_text = str(existing_plan_version[key])
-                    break
-
-    # Recent chat messages (last few)
-    if isinstance(chat_history, list) and chat_history:
-        parts.extend(["## Previous Conversation", ""])
-        recent = chat_history[-5:] if len(chat_history) > 5 else chat_history
-        for msg in recent:
-            role = (msg or {}).get("role", "user") if isinstance(msg, dict) else "user"
-            content = (msg or {}).get("content", "") if isinstance(msg, dict) else str(msg)
-            parts.append(f"**{str(role).title()}:** {content}")
-            parts.append("")
-
-    # Current request
-    parts.extend(
-        [
-            "## Current Request",
-            f"**User:** {user_message}",
-            "",
-            "## Instructions",
-            "Provide a structured implementation plan. Follow the formatting instructions"
-            " at the top of the system prompt.",
-        ]
-    )
-
-    return ("\n".join(parts), prev_questions_text, current_plan_text)
-
-
-async def generate_plan_business(plan_context: Dict[str, object]) -> AsyncGenerator[str, None]:
-    """Business-facing streaming function returning raw string chunks.
-
-    Builds a rich context from `plan_context`, calls the structured `generate_plan`
-    in this module, and yields only text chunks suitable for SSE/streaming.
-    """
-    # Build user notes and optional prior sections
-    user_notes, prev_questions, current_plan_text = _build_user_notes_from_context(plan_context)
-
-    repository = plan_context.get("repository")
-    project_dir = str(getattr(repository, "path", "")) if repository is not None else "."
-
-    async for out_type, chunk in generate_plan(
-        project_dir=project_dir,
-        user_raw_notes=user_notes,
-        prev_clarfying_questions=prev_questions,
-        current_plan=current_plan_text,
-    ):
-        # Discard the type for the business API; stream only text
-        if chunk:
-            yield chunk
