@@ -52,10 +52,12 @@ exclude = '''
   | \.mypy_cache
   | \.tox
   | \.venv
+  | venv
   | _build
   | buck-out
   | build
   | dist
+  | python_packages
   | migrations
 )/
 '''
@@ -106,7 +108,8 @@ exclude = [
     ".venv",
     "migrations",
     "build",
-    "dist"
+    "dist",
+    "python_packages"
 ]
 per-file-ignores = [
     "__init__.py:F401"

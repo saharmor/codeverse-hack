@@ -14,6 +14,14 @@ cleanup() {
 # Set trap to cleanup on script exit
 trap cleanup SIGINT SIGTERM
 
+# Load environment from repo .env if present
+if [ -f .env ]; then
+  echo "📦 Loading .env from repo root"
+  set -a
+  source .env
+  set +a
+fi
+
 # Start backend
 echo "🐍 Starting FastAPI backend..."
 cd backend
@@ -23,6 +31,10 @@ if [ ! -d ".venv" ]; then
 fi
 
 source .venv/bin/activate
+python - << 'PY'
+import openai, httpx
+print('Backend runtime deps:', 'openai', openai.__version__, 'httpx', httpx.__version__)
+PY
 python run.py &
 BACKEND_PID=$!
 cd ..
