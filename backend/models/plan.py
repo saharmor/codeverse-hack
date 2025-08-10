@@ -1,7 +1,7 @@
 """
 Plan and PlanArtifact models for storing planning information
 """
-from sqlalchemy import Column, String, Text, Integer, ForeignKey, JSON, Enum, UniqueConstraint
+from sqlalchemy import Column, String, Text, Integer, ForeignKey, JSON, UniqueConstraint
 from sqlalchemy.orm import relationship
 import enum
 from .base import BaseModel
@@ -25,7 +25,7 @@ class Plan(BaseModel):
     description = Column(Text)
     target_branch = Column(String(100), nullable=False)
     version = Column(Integer, nullable=False, default=1)
-    status = Column(Enum(PlanStatus), nullable=False, default=PlanStatus.DRAFT)
+    status = Column(String(20), nullable=False, default=PlanStatus.DRAFT.value)
     
     # Relationships
     repository = relationship("Repository", back_populates="plans")
@@ -44,7 +44,7 @@ class PlanArtifact(BaseModel):
     
     plan_id = Column(String(36), ForeignKey("plans.id", ondelete="CASCADE"), nullable=False)
     content = Column(JSON, nullable=False)
-    artifact_type = Column(Enum(ArtifactType), nullable=False)
+    artifact_type = Column(String(30), nullable=False)
     
     # Relationships
     plan = relationship("Plan", back_populates="artifacts")

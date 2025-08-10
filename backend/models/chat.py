@@ -1,7 +1,7 @@
 """
 ChatSession model for storing chat conversations
 """
-from sqlalchemy import Column, ForeignKey, JSON, Enum, String
+from sqlalchemy import Column, ForeignKey, JSON, String
 from sqlalchemy.orm import relationship
 import enum
 from .base import BaseModel
@@ -15,7 +15,7 @@ class ChatSession(BaseModel):
     
     plan_id = Column(String(36), ForeignKey("plans.id", ondelete="CASCADE"), nullable=False)
     messages = Column(JSON, nullable=False, default=list)
-    status = Column(Enum(ChatStatus), nullable=False, default=ChatStatus.ACTIVE)
+    status = Column(String(20), nullable=False, default=ChatStatus.ACTIVE.value)
     
     # Relationships
     plan = relationship("Plan", back_populates="chat_sessions")
