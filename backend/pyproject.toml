@@ -89,7 +89,9 @@ module = [
     "passlib.*",
     "jose.*",
     "alembic.*",
-    "requests.*"
+    "requests.*",
+    "websockets.*",
+    "werkzeug.*"
 ]
 ignore_missing_imports = true
 
