@@ -11,9 +11,9 @@ import pytest
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from database import AsyncSessionLocal, create_tables, drop_tables
-from models import ChatSession, Plan, PlanArtifact, Repository
+from models import ChatSession, Plan, PlanVersion, Repository
 from models.chat import ChatStatus
-from models.plan import ArtifactType, PlanStatus
+from models.plan import PlanStatus
 
 
 @pytest.mark.asyncio
@@ -47,7 +47,6 @@ async def test_database():
                 name="test-feature",
                 description="A test feature plan",
                 target_branch="feature/test",
-                version=1,
                 status=PlanStatus.DRAFT.value,  # Use .value for string
             )
             session.add(plan)
@@ -56,10 +55,10 @@ async def test_database():
             print(f"✓ Created plan: {plan}")
 
             # Create a plan artifact
-            artifact = PlanArtifact(
+            artifact = PlanVersion(
                 plan_id=plan.id,
                 content={"steps": ["Step 1", "Step 2", "Step 3"]},
-                artifact_type=ArtifactType.FEATURE_PLAN.value,  # Use .value for string
+                version=1,
             )
             session.add(artifact)
             await session.commit()

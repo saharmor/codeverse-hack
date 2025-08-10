@@ -48,7 +48,6 @@ class PlanBase(BaseModel):
     name: str
     description: Optional[str] = None
     target_branch: str
-    version: int = 1
     status: PlanStatus = PlanStatus.DRAFT
 
 
@@ -73,23 +72,17 @@ class Plan(PlanBase):
         from_attributes = True
 
 
-# Plan Artifact schemas
-class ArtifactType(str, Enum):
-    FEATURE_PLAN = "feature_plan"
-    IMPLEMENTATION_STEPS = "implementation_steps"
-    CODE_CHANGES = "code_changes"
-
-
-class PlanArtifactBase(BaseModel):
+# Plan Version schemas
+class PlanVersionBase(BaseModel):
     content: Dict[str, Any]
-    artifact_type: ArtifactType
+    version: int = 1
 
 
-class PlanArtifactCreate(PlanArtifactBase):
+class PlanVersionCreate(PlanVersionBase):
     plan_id: str
 
 
-class PlanArtifact(PlanArtifactBase):
+class PlanVersion(PlanVersionBase):
     id: str
     plan_id: str
     created_at: datetime

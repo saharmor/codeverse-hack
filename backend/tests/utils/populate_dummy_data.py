@@ -30,7 +30,7 @@ from sqlalchemy import select  # noqa: E402
 
 from database import AsyncSessionLocal, create_tables  # noqa: E402
 from models.chat import ChatSession, ChatStatus  # noqa: E402
-from models.plan import ArtifactType, Plan, PlanArtifact, PlanStatus  # noqa: E402
+from models.plan import Plan, PlanStatus, PlanVersion  # noqa: E402
 from models.repository import Repository  # noqa: E402
 
 # Configuration
@@ -138,7 +138,6 @@ li {
                 "target_branch": "main",
                 "artifacts": [
                     {
-                        "type": ArtifactType.FEATURE_PLAN.value,
                         "content": {
                             "title": "Dark Mode Implementation Plan",
                             "sections": [
@@ -197,7 +196,6 @@ li {
                 "target_branch": "feature-auth",
                 "artifacts": [
                     {
-                        "type": ArtifactType.IMPLEMENTATION_STEPS.value,
                         "content": {
                             "title": "User Authentication Implementation",
                             "steps": [
@@ -342,7 +340,6 @@ if __name__ == '__main__':
                 "target_branch": "main",
                 "artifacts": [
                     {
-                        "type": ArtifactType.FEATURE_PLAN.value,
                         "content": {
                             "title": "Machine Learning Integration",
                             "overview": (
@@ -492,7 +489,6 @@ module.exports = app;
                 "target_branch": "feature-database",
                 "artifacts": [
                     {
-                        "type": ArtifactType.IMPLEMENTATION_STEPS.value,
                         "content": {
                             "title": "MongoDB Integration Plan",
                             "steps": [
@@ -630,7 +626,6 @@ async def populate_database() -> None:
                     name=plan_config["name"],
                     description=plan_config["description"],
                     target_branch=plan_config["target_branch"],
-                    version=1,
                     status=PlanStatus.DRAFT.value,
                 )
                 session.add(plan)
@@ -640,11 +635,11 @@ async def populate_database() -> None:
 
                 # Create artifacts
                 for artifact_config in plan_config.get("artifacts", []):
-                    artifact = PlanArtifact(
+                    artifact = PlanVersion(
                         id=str(uuid.uuid4()),
                         plan_id=plan.id,
                         content=artifact_config["content"],
-                        artifact_type=artifact_config["type"],
+                        version=1,
                     )
                     session.add(artifact)
 
