@@ -27,9 +27,20 @@ class TestBusinessFlowSequential:
         """Step 1: Create a repository."""
         # Use unique path for each test run to avoid constraint violations
         unique_id = str(uuid.uuid4())[:8]
+        repository_path = f"../../test-repos/test-codeverse-{unique_id}"
+
+        # Create the directory structure for testing
+        import os
+
+        os.makedirs(repository_path, exist_ok=True)
+
+        # Create a basic README file to make it look like a real repo
+        with open(f"{repository_path}/README.md", "w") as f:
+            f.write("# Test CodeVerse App\n\nThis is a test repository for mobile chat application development.\n")
+
         repository_data = {
             "name": f"test-codeverse-app-{unique_id}",
-            "path": f"/tmp/test-repos/test-codeverse-{unique_id}",
+            "path": repository_path,
             "git_url": "https://github.com/example/test-codeverse-app.git",
             "default_branch": "main",
         }
@@ -142,7 +153,7 @@ class TestBusinessFlowSequential:
                                     break
 
                                 elif chunk_type == "error":
-                                    error_msg = data_json.get("error", "Unknown error")
+                                    error_msg = data_json.get("message", data_json.get("error", "Unknown error"))
                                     print(f"❌ Error received: {error_msg}")
                                     pytest.fail(f"Business logic returned error: {error_msg}")
 
@@ -184,8 +195,23 @@ class TestBusinessFlowSequential:
         """Step 4: Clean up test data."""
         print("🧹 Cleaning up test data...")
 
-        # Delete plan
+        # Get repository path before deleting from database
         async with httpx.AsyncClient() as client:
+            repo_get_response = await client.get(f"{self.base_url}/api/repositories/{self.repository_id}")
+            if repo_get_response.status_code == 200:
+                repo_data = repo_get_response.json()
+                repo_path = repo_data.get("path")
+
+                # Delete temporary directory
+                if repo_path and repo_path.startswith("/tmp/test-repos/"):
+                    import os
+                    import shutil
+
+                    if os.path.exists(repo_path):
+                        shutil.rmtree(repo_path)
+                        print(f"✅ Temporary directory {repo_path} cleaned up")
+
+            # Delete plan
             plan_response = await client.delete(f"{self.base_url}/api/plans/{self.plan_id}")
             assert plan_response.status_code == 200
             print(f"✅ Plan {self.plan_id} deleted")

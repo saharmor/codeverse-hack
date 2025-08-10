@@ -36,5 +36,12 @@ class Settings:
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
+    # Claude CLI Configuration
+    # Set CLAUDE_CLI_PATH environment variable to specify custom Claude CLI location
+    # If not set, the system will try common locations:
+    # - ~/.claude/local (official Claude CLI)
+    # - /usr/local/bin (system-wide installs)
+    # - ~/node_modules/.bin (npm local installs)
+
 
 settings = Settings()
