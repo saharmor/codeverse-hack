@@ -8,24 +8,27 @@ interface VoiceRecorderProps {
   inline?: boolean
 }
 
-export default function VoiceRecorder({ 
-  onAccept, 
-  onCancel, 
-  autoStart = false, 
-  inline = false 
+export default function VoiceRecorder({
+  onAccept,
+  onCancel,
+  autoStart = false,
+  inline = false
 }: VoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false)
   const [hasRecording, setHasRecording] = useState(false)
   const [permissionDenied, setPermissionDenied] = useState(false)
   const [audioLevel, setAudioLevel] = useState(0)
   const [bars, setBars] = useState<number[]>([])
-  
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null) // unused in WAV path, kept for reference
   const streamRef = useRef<MediaStream | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
+  const processorRef = useRef<ScriptProcessorNode | null>(null)
+  const silentGainRef = useRef<GainNode | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const chunksRef = useRef<BlobPart[]>([])
+  const floatChunksRef = useRef<Float32Array[]>([])
 
   // Initialize bars array
   useEffect(() => {
@@ -35,19 +38,19 @@ export default function VoiceRecorder({
 
   const startAudioAnalysis = () => {
     if (!analyserRef.current) return
-    
+
     const analyser = analyserRef.current
     const bufferLength = analyser.frequencyBinCount
     const dataArray = new Uint8Array(bufferLength)
     const timeDataArray = new Uint8Array(analyser.fftSize)
-    
+
     const updateBars = () => {
       if (!analyserRef.current || !isRecording) return
-      
+
       // Get both frequency and time domain data
       analyser.getByteFrequencyData(dataArray)
       analyser.getByteTimeDomainData(timeDataArray)
-      
+
       // Calculate RMS (Root Mean Square) for better audio level detection
       let rms = 0
       for (let i = 0; i < timeDataArray.length; i++) {
@@ -56,19 +59,19 @@ export default function VoiceRecorder({
       }
       rms = Math.sqrt(rms / timeDataArray.length)
       setAudioLevel(rms)
-      
+
       // Generate bar heights
       const barCount = inline ? 40 : 24
       const newBars: number[] = []
-      
+
       // Use more frequency data for better visualization
       const usableRange = Math.min(bufferLength / 2, 128)
-      
+
       for (let i = 0; i < barCount; i++) {
         // Better frequency mapping
         const freqIndex = Math.floor((i / barCount) * usableRange)
         const nextFreqIndex = Math.floor(((i + 1) / barCount) * usableRange)
-        
+
         // Average frequency data in this range
         let sum = 0
         let count = 0
@@ -76,34 +79,34 @@ export default function VoiceRecorder({
           sum += dataArray[j]
           count++
         }
-        
+
         const average = count > 0 ? sum / count : 0
         let normalizedValue = average / 255
-        
+
         // Apply sensitivity boost for quiet audio
         normalizedValue = Math.pow(normalizedValue, 0.6)
-        
+
         // Add some baseline activity when there's any audio
         if (rms > 0.01) {
           normalizedValue = Math.max(normalizedValue, 0.1 + (rms * 0.3))
         }
-        
+
         // Add subtle randomness for natural movement
         const randomness = 0.05 * Math.random()
         normalizedValue = Math.min(1, normalizedValue + randomness)
-        
+
         // Convert to pixel height
         const minHeight = 6
         const maxHeight = inline ? 36 : 32
         const height = Math.round(minHeight + (normalizedValue * (maxHeight - minHeight)))
-        
+
         newBars.push(height)
       }
-      
+
       setBars(newBars)
       animationFrameRef.current = requestAnimationFrame(updateBars)
     }
-    
+
     // Start the animation loop
     animationFrameRef.current = requestAnimationFrame(updateBars)
   }
@@ -118,13 +121,14 @@ export default function VoiceRecorder({
   const startRecording = async () => {
     try {
       console.log('Starting recording...')
-      
+
       // Reset state
       setPermissionDenied(false)
       chunksRef.current = []
-      
+      floatChunksRef.current = []
+
       // Get microphone access with better constraints
-      const stream = await navigator.mediaDevices.getUserMedia({ 
+      const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
           noiseSuppression: true,
@@ -132,59 +136,52 @@ export default function VoiceRecorder({
         }
       })
       streamRef.current = stream
-      
+
       // Create audio context and analyser
       const AudioContext = window.AudioContext || (window as any).webkitAudioContext
       const audioContext = new AudioContext()
       audioContextRef.current = audioContext
-      
+
       // Resume audio context if suspended
       if (audioContext.state === 'suspended') {
         await audioContext.resume()
       }
-      
+
       const analyser = audioContext.createAnalyser()
       analyser.fftSize = 256 // Smaller for better performance
       analyser.smoothingTimeConstant = 0.9 // More smoothing
       analyser.minDecibels = -100
       analyser.maxDecibels = -30
       analyserRef.current = analyser
-      
+
       const source = audioContext.createMediaStreamSource(stream)
       source.connect(analyser)
-      
-      // Create media recorder
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'audio/webm'
-      })
-      mediaRecorderRef.current = mediaRecorder
-      
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data)
-        }
+
+      // Create ScriptProcessorNode to capture PCM for WAV encoding
+      const processor = audioContext.createScriptProcessor(4096, 1, 1)
+      processorRef.current = processor
+      source.connect(processor)
+
+      // Route processor to a silent gain to keep the node active without audible output
+      const silentGain = audioContext.createGain()
+      silentGain.gain.value = 0
+      silentGainRef.current = silentGain
+      processor.connect(silentGain)
+      silentGain.connect(audioContext.destination)
+
+      processor.onaudioprocess = (e) => {
+        const input = e.inputBuffer.getChannelData(0)
+        // Copy the Float32Array as the buffer is reused each tick
+        floatChunksRef.current.push(new Float32Array(input))
       }
-      
-      mediaRecorder.onstop = () => {
-        console.log('Recording stopped')
-        setHasRecording(chunksRef.current.length > 0)
-        setIsRecording(false)
-        stopAudioAnalysis()
-      }
-      
-      mediaRecorder.onerror = (event) => {
-        console.error('MediaRecorder error:', event)
-      }
-      
-      // Start recording
-      mediaRecorder.start(100) // Collect data every 100ms
+
       setIsRecording(true)
-      
+
       // Start audio visualization
       startAudioAnalysis()
-      
+
       console.log('Recording started successfully')
-      
+
     } catch (error) {
       console.error('Failed to start recording:', error)
       setPermissionDenied(true)
@@ -194,10 +191,75 @@ export default function VoiceRecorder({
 
   const stopRecording = () => {
     console.log('Stopping recording...')
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop()
+    // Stop WAV capture
+    if (processorRef.current) {
+      processorRef.current.disconnect()
+      processorRef.current.onaudioprocess = null
+      processorRef.current = null
     }
+    if (silentGainRef.current) {
+      try { silentGainRef.current.disconnect() } catch {}
+      silentGainRef.current = null
+    }
+    setHasRecording(floatChunksRef.current.length > 0)
+    setIsRecording(false)
     stopAudioAnalysis()
+  }
+
+  function encodeWavFromFloat32(chunks: Float32Array[], sampleRate: number): Blob {
+    // Concatenate Float32 chunks
+    const length = chunks.reduce((sum, c) => sum + c.length, 0)
+    const buffer = new Float32Array(length)
+    let offset = 0
+    for (const c of chunks) {
+      buffer.set(c, offset)
+      offset += c.length
+    }
+
+    // Convert to 16-bit PCM
+    const pcmBuffer = new Int16Array(buffer.length)
+    for (let i = 0; i < buffer.length; i++) {
+      const s = Math.max(-1, Math.min(1, buffer[i]))
+      pcmBuffer[i] = s < 0 ? s * 0x8000 : s * 0x7fff
+    }
+
+    const bytesPerSample = 2 // 16-bit
+    const numChannels = 1
+    const blockAlign = numChannels * bytesPerSample
+    const byteRate = sampleRate * blockAlign
+    const dataSize = pcmBuffer.length * bytesPerSample
+    const bufferSize = 44 + dataSize
+    const arrayBuffer = new ArrayBuffer(bufferSize)
+    const view = new DataView(arrayBuffer)
+
+    // RIFF header
+    function writeString(offset: number, str: string) {
+      for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i))
+    }
+    let pos = 0
+    writeString(pos, 'RIFF'); pos += 4
+    view.setUint32(pos, 36 + dataSize, true); pos += 4
+    writeString(pos, 'WAVE'); pos += 4
+    // fmt chunk
+    writeString(pos, 'fmt '); pos += 4
+    view.setUint32(pos, 16, true); pos += 4 // PCM chunk size
+    view.setUint16(pos, 1, true); pos += 2  // PCM format
+    view.setUint16(pos, numChannels, true); pos += 2
+    view.setUint32(pos, sampleRate, true); pos += 4
+    view.setUint32(pos, byteRate, true); pos += 4
+    view.setUint16(pos, blockAlign, true); pos += 2
+    view.setUint16(pos, bytesPerSample * 8, true); pos += 2 // bits per sample
+    // data chunk
+    writeString(pos, 'data'); pos += 4
+    view.setUint32(pos, dataSize, true); pos += 4
+
+    // PCM data
+    let dataPos = pos
+    for (let i = 0; i < pcmBuffer.length; i++, dataPos += 2) {
+      view.setInt16(dataPos, pcmBuffer[i], true)
+    }
+
+    return new Blob([view], { type: 'audio/wav' })
   }
 
   const acceptRecording = () => {
@@ -205,16 +267,18 @@ export default function VoiceRecorder({
       stopRecording()
       // Wait a bit for the stop event to process
       setTimeout(() => {
-        if (chunksRef.current.length > 0) {
-          const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-          onAccept(blob)
+        if (floatChunksRef.current.length > 0 && audioContextRef.current) {
+          const wavBlob = encodeWavFromFloat32(floatChunksRef.current, audioContextRef.current.sampleRate)
+          onAccept(wavBlob)
           reset()
         }
       }, 100)
     } else if (hasRecording) {
-      const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-      onAccept(blob)
-      reset()
+      if (floatChunksRef.current.length > 0 && audioContextRef.current) {
+        const wavBlob = encodeWavFromFloat32(floatChunksRef.current, audioContextRef.current.sampleRate)
+        onAccept(wavBlob)
+        reset()
+      }
     }
   }
 
@@ -233,13 +297,14 @@ export default function VoiceRecorder({
     setHasRecording(false)
     setPermissionDenied(false)
     setAudioLevel(0)
-    
+
     const barCount = inline ? 40 : 24
     setBars(new Array(barCount).fill(8))
     chunksRef.current = []
-    
+    floatChunksRef.current = []
+
     stopAudioAnalysis()
-    
+
     // Clean up media stream
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => {
@@ -248,13 +313,22 @@ export default function VoiceRecorder({
       })
       streamRef.current = null
     }
-    
+
     // Clean up audio context
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close()
       audioContextRef.current = null
     }
-    
+    if (processorRef.current) {
+      try { processorRef.current.disconnect() } catch {}
+      processorRef.current.onaudioprocess = null
+      processorRef.current = null
+    }
+    if (silentGainRef.current) {
+      try { silentGainRef.current.disconnect() } catch {}
+      silentGainRef.current = null
+    }
+
     analyserRef.current = null
     mediaRecorderRef.current = null
   }
@@ -264,7 +338,7 @@ export default function VoiceRecorder({
     if (autoStart) {
       startRecording()
     }
-    
+
     return () => {
       reset()
     }
@@ -287,20 +361,20 @@ export default function VoiceRecorder({
               <div
                 key={index}
                 className={`w-[2.5px] rounded-sm transition-all duration-75 ${
-                  isRecording 
-                    ? 'bg-gradient-to-t from-purple-600 to-purple-400' 
-                    : hasRecording 
+                  isRecording
+                    ? 'bg-gradient-to-t from-purple-600 to-purple-400'
+                    : hasRecording
                       ? 'bg-gradient-to-t from-green-600 to-green-400'
                       : 'bg-gray-300'
                 }`}
-                style={{ 
+                style={{
                   height: `${height}px`,
                   opacity: isRecording ? 0.7 + (audioLevel * 0.3) : 0.6
                 }}
               />
             ))}
           </div>
-          
+
           {/* Control buttons */}
           <div className="flex items-center gap-2 pl-3">
             {!isRecording && !hasRecording && (
@@ -312,7 +386,7 @@ export default function VoiceRecorder({
                 <Mic className="w-4 h-4" />
               </button>
             )}
-            
+
             {(isRecording || hasRecording) && (
               <>
                 <button
@@ -333,7 +407,7 @@ export default function VoiceRecorder({
             )}
           </div>
         </div>
-        
+
         {/* Status indicator */}
         <div className="mt-3 text-center">
           {isRecording && (
@@ -353,7 +427,7 @@ export default function VoiceRecorder({
             </div>
           )}
         </div>
-        
+
         {permissionDenied && (
           <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
             <p className="text-sm text-red-700">
@@ -387,13 +461,13 @@ export default function VoiceRecorder({
               <div
                 key={index}
                 className={`w-[3px] rounded-sm transition-all duration-100 ${
-                  isRecording 
-                    ? 'bg-gradient-to-t from-purple-600 to-purple-400' 
-                    : hasRecording 
+                  isRecording
+                    ? 'bg-gradient-to-t from-purple-600 to-purple-400'
+                    : hasRecording
                       ? 'bg-gradient-to-t from-green-600 to-green-400'
                       : 'bg-gray-300'
                 }`}
-                style={{ 
+                style={{
                   height: `${height}px`,
                   opacity: isRecording ? 0.6 + (audioLevel * 0.4) : 0.7
                 }}
@@ -453,46 +527,46 @@ export default function VoiceRecorder({
 // Demo component to test the recorder
 function VoiceRecorderDemo() {
   const [recordings, setRecordings] = useState<string[]>([])
-  
+
   const handleAccept = (blob: Blob) => {
     console.log('Recording accepted:', blob)
     const url = URL.createObjectURL(blob)
     setRecordings(prev => [...prev, url])
   }
-  
+
   const handleCancel = () => {
     console.log('Recording cancelled')
   }
-  
+
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-8">
       <div className="text-center">
         <h1 className="text-2xl font-bold text-gray-900 mb-2">Voice Recorder Component</h1>
         <p className="text-gray-600">Test the voice recorder with real-time waveform visualization</p>
       </div>
-      
+
       <div className="space-y-6">
         <div>
           <h2 className="text-lg font-semibold mb-3">Inline Version</h2>
-          <VoiceRecorder 
+          <VoiceRecorder
             onAccept={handleAccept}
             onCancel={handleCancel}
             inline={true}
           />
         </div>
-        
+
         <div>
           <h2 className="text-lg font-semibold mb-3">Standard Version</h2>
-          <VoiceRecorder 
+          <VoiceRecorder
             onAccept={handleAccept}
             onCancel={handleCancel}
             inline={false}
           />
         </div>
-        
+
         <div>
           <h2 className="text-lg font-semibold mb-3">Auto-Start Version</h2>
-          <VoiceRecorder 
+          <VoiceRecorder
             onAccept={handleAccept}
             onCancel={handleCancel}
             autoStart={false}
@@ -501,7 +575,7 @@ function VoiceRecorderDemo() {
           <p className="text-sm text-gray-500 mt-2">Change autoStart to true to test auto-recording</p>
         </div>
       </div>
-      
+
       {recordings.length > 0 && (
         <div className="mt-8">
           <h3 className="text-lg font-semibold mb-3">Recorded Audio</h3>
@@ -517,7 +591,7 @@ function VoiceRecorderDemo() {
           </div>
         </div>
       )}
-      
+
       <div className="text-sm text-gray-500 bg-gray-50 p-4 rounded-lg">
         <p className="font-medium mb-2">How to test:</p>
         <ul className="space-y-1">

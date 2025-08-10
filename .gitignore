@@ -81,7 +81,7 @@ backend/htmlcov/
 # Database files
 backend/*.db
 backend/*.db-journal
-codeverse.db
+backend/codeverse.db
 
 # Python logs
 backend/*.log

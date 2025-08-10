@@ -26,10 +26,25 @@ export async function transcribeAudio(planId: string, blob: Blob): Promise<{
   vocab_hit_rate: number
 }> {
   const audio_wav_base64 = await blobToWavBase64(blob)
-  const res = await api['request']<any>('/api/transcribe', {
+
+  // Debug logging (controlled by env flag)
+  try {
+    const debug = process.env.NEXT_PUBLIC_DEBUG === 'true'
+    if (debug) {
+      console.log('Transcription debug — blob:', { type: blob.type, size: blob.size })
+      console.log('Transcription debug — base64 length:', audio_wav_base64.length)
+      console.log('Transcription debug — base64:', audio_wav_base64)
+    }
+  } catch {}
+
+  const res = await (api as any).request('/api/transcribe', {
     method: 'POST',
     body: JSON.stringify({ plan_id: planId, audio_wav_base64 }),
   } as any)
-  if (res.error) throw new Error(res.error)
+  if (res.error) {
+    const err: any = new Error(res.error)
+    if (res.errorDetails) err.details = res.errorDetails
+    throw err
+  }
   return res.data
 }

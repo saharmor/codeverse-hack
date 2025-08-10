@@ -8,6 +8,7 @@ export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
   status: number;
+  errorDetails?: unknown;
 }
 
 export class ApiClient {
@@ -26,27 +27,55 @@ export class ApiClient {
       const response = await fetch(url, {
         headers: {
           "Content-Type": "application/json",
-          ...options.headers,
+          ...(options.headers || {}),
         },
         ...options,
       });
 
+      // Try to parse JSON for both success and error responses
+      const contentType = response.headers.get("content-type") || "";
+      const isJson = contentType.includes("application/json");
+
       if (!response.ok) {
+        let parsed: any = undefined;
+        let text: string | undefined = undefined;
+        try {
+          parsed = isJson ? await response.json() : undefined;
+        } catch {
+          try {
+            text = await response.text();
+          } catch {
+            // ignore
+          }
+        }
+
+        const detail = parsed?.detail || parsed?.message || parsed?.error || text;
+        const errorMessage = `HTTP ${response.status}${detail ? `: ${detail}` : ""}`;
+
         return {
-          error: `HTTP error! status: ${response.status}`,
+          error: errorMessage,
+          status: response.status,
+          errorDetails: parsed ?? text,
+        };
+      }
+
+      if (isJson) {
+        const data = await response.json();
+        return {
+          data,
           status: response.status,
         };
       }
 
-      const data = await response.json();
+      // Fallback for non-JSON success
+      const text = await response.text();
       return {
-        data,
+        data: text as unknown as T,
         status: response.status,
       };
     } catch (error) {
       return {
-        error:
-          error instanceof Error ? error.message : "Unknown error occurred",
+        error: error instanceof Error ? error.message : "Unknown error occurred",
         status: 0,
       };
     }
@@ -140,8 +169,8 @@ export class ApiClient {
   // Business logic - plan generation with streaming
   generatePlan(
     planId: string,
-    payload: { 
-      user_message: string; 
+    payload: {
+      user_message: string;
       plan_artifact?: any;
       chat_messages?: any[];
     },
@@ -150,7 +179,7 @@ export class ApiClient {
     onComplete: () => void
   ): () => void {
     const url = `${this.baseUrl}/api/business/plans/${planId}/generate`;
-    
+
     // Make the POST request and handle the streaming response
     fetch(url, {
       method: "POST",
@@ -170,18 +199,18 @@ export class ApiClient {
       }
 
       const decoder = new TextDecoder();
-      
+
       try {
         while (true) {
           const { done, value } = await reader.read();
-          
+
           if (done) {
             break;
           }
 
           const chunk = decoder.decode(value);
           const lines = chunk.split('\n');
-          
+
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
