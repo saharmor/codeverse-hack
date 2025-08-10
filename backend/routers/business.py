@@ -10,7 +10,7 @@ from database import get_db
 from models import ChatSession, Plan, PlanArtifact, Repository
 
 # ChatMessage schema available if needed for future use
-from services.claude_service import generate_plan
+from services.claude_service import generate_plan_business
 
 router = APIRouter(prefix="/api/business", tags=["business-logic"])
 
@@ -79,7 +79,7 @@ async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any], db:
     # Stream the response from Claude
     async def stream_response():
         try:
-            async for chunk in generate_plan(plan_context):
+            async for chunk in generate_plan_business(plan_context):
                 # Send each chunk as JSON
                 yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
 

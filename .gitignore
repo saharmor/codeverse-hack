@@ -102,3 +102,6 @@ backend/*.temp
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+
+plan_*
