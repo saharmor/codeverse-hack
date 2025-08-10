@@ -17,12 +17,12 @@ trap cleanup SIGINT SIGTERM
 # Start backend
 echo "🐍 Starting FastAPI backend..."
 cd backend
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo "❌ Virtual environment not found. Please run setup.sh first."
     exit 1
 fi
 
-source venv/bin/activate
+source .venv/bin/activate
 python run.py &
 BACKEND_PID=$!
 cd ..

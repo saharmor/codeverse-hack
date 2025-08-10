@@ -54,34 +54,22 @@ echo "🐍 Setting up Python backend..."
 cd backend
 
 # Create virtual environment
-if [ ! -d "venv" ]; then
+if [ ! -d ".venv" ]; then
     echo "Creating Python virtual environment with $PYTHON_CMD..."
-    $PYTHON_CMD -m venv venv
+    $PYTHON_CMD -m venv .venv
 fi
 
 # Activate virtual environment
 echo "Activating virtual environment..."
-source venv/bin/activate
+source .venv/bin/activate
 
 # Upgrade pip first
 echo "Upgrading pip..."
 pip install --upgrade pip
 
-# Install Python dependencies with retry logic for pydantic-core
+# Install Python dependencies
 echo "Installing Python dependencies..."
-if ! pip install -r requirements.txt; then
-    echo "⚠️  First attempt failed. Trying to install pydantic-core separately..."
-
-    # Try to install pydantic-core with specific version that's compatible
-    if ! pip install "pydantic-core<2.15.0"; then
-        echo "⚠️  Trying alternative approach - installing pydantic with compatible version..."
-        pip install "pydantic<2.6.0"
-    fi
-
-    # Now try to install the rest of the requirements
-    echo "Installing remaining dependencies..."
-    pip install -r requirements.txt
-fi
+pip install -r requirements.txt
 
 cd ..
 
