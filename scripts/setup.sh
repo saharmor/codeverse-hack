@@ -71,13 +71,13 @@ pip install --upgrade pip
 echo "Installing Python dependencies..."
 if ! pip install -r requirements.txt; then
     echo "⚠️  First attempt failed. Trying to install pydantic-core separately..."
-    
+
     # Try to install pydantic-core with specific version that's compatible
     if ! pip install "pydantic-core<2.15.0"; then
         echo "⚠️  Trying alternative approach - installing pydantic with compatible version..."
         pip install "pydantic<2.6.0"
     fi
-    
+
     # Now try to install the rest of the requirements
     echo "Installing remaining dependencies..."
     pip install -r requirements.txt
@@ -93,4 +93,4 @@ echo "1. Start the backend: cd backend && python run.py"
 echo "2. Start the frontend: npm run dev"
 echo "3. Run the desktop app: npm run tauri:dev"
 echo ""
-echo "Happy coding! 🚀" 
+echo "Happy coding! 🚀"

@@ -63,7 +63,7 @@ CREATE TABLE chat_sessions (
 - `git_url` allows for remote repository tracking
 - `default_branch` enables flexible branch management
 
-### Plans Table  
+### Plans Table
 - Linked to repositories via foreign key relationship
 - Version-controlled with integer versioning
 - Status tracking for plan lifecycle management
@@ -85,7 +85,7 @@ CREATE TABLE chat_sessions (
 - Use SQLite for local development
 - Alembic migrations for schema evolution
 
-### Production  
+### Production
 - PostgreSQL for production deployment
 - Full ACID compliance and concurrent access support
 - JSONB indexing for efficient artifact queries

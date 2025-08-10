@@ -44,4 +44,4 @@ export default function TaskOutputPanel() {
       </div>
     </aside>
   )
-} 
+}

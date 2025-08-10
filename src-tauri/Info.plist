@@ -7,4 +7,4 @@
   <key>NSCameraUsageDescription</key>
   <string>Camera access may be required for future features using WebRTC.</string>
 </dict>
-</plist> 
+</plist>
