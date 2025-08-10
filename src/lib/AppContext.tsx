@@ -18,10 +18,12 @@ interface AppContextValue {
   selectPlan: (id: string) => void
   createPlan: (payload: { name: string; description?: string; target_branch: string }) => Promise<void>
   deletePlan: (id: string) => Promise<void>
+  updatePlanName: (planId: string, newName: string) => void
 
   // chat
   chatMessages: ChatMessage[]
   sendMessage: (content: string) => Promise<void>
+  generatePlan: (message: string) => Promise<void>
 
   // artifacts
   artifacts: PlanArtifact[]
@@ -188,6 +190,12 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     }
   }, [selectedRepositoryId])
 
+  const updatePlanName = useCallback((planId: string, newName: string) => {
+    setPlans(prev => prev.map(plan =>
+      plan.id === planId ? { ...plan, name: newName } : plan
+    ))
+  }, [])
+
   const deletePlan = useCallback(async (id: string) => {
     await apiClient.deletePlan(id)
     setPlans(prev => prev.filter(p => p.id !== id))
@@ -213,6 +221,77 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     }
   }, [chatSession, selectedPlanId])
 
+  const generatePlan = useCallback(async (message: string) => {
+    if (!selectedPlanId) return
+
+    const trimmed = message.trim()
+    if (!trimmed) return
+
+    // Add user message to chat
+    const userMsg: ChatMessage = { id: `m${Date.now()}`, role: 'user', content: trimmed, timestamp: Date.now() }
+    setChatMessages(prev => [...prev, userMsg])
+
+    let assistantResponse = ''
+    const assistantMsgId = `assistant-${Date.now()}`
+
+    // Start streaming plan generation
+    const cleanup = apiClient.generatePlan(
+      selectedPlanId,
+      {
+        user_message: trimmed,
+        chat_messages: chatMessages.map(msg => ({
+          role: msg.role,
+          content: msg.content
+        }))
+      },
+      // onMessage callback
+      (data) => {
+        if (data.type === 'name_update') {
+          // Update plan name dynamically
+          updatePlanName(selectedPlanId, data.name)
+        } else if (data.type === 'chunk') {
+          assistantResponse += data.content
+          // Update or add assistant message
+          setChatMessages(prev => {
+            const existingIndex = prev.findIndex(msg => msg.id === assistantMsgId)
+            if (existingIndex >= 0) {
+              const newMessages = [...prev]
+              newMessages[existingIndex] = {
+                ...newMessages[existingIndex],
+                content: assistantResponse
+              }
+              return newMessages
+            } else {
+              return [...prev, {
+                id: assistantMsgId,
+                role: 'assistant' as const,
+                content: assistantResponse,
+                timestamp: Date.now()
+              }]
+            }
+          })
+        }
+      },
+      // onError callback
+      (error) => {
+        console.error('Plan generation error:', error)
+        setChatMessages(prev => [...prev, {
+          id: `error-${Date.now()}`,
+          role: 'assistant' as const,
+          content: 'Sorry, there was an error generating the plan. Please try again.',
+          timestamp: Date.now()
+        }])
+      },
+      // onComplete callback
+      () => {
+        console.log('Plan generation completed')
+      }
+    )
+
+    // Store cleanup function if needed for component unmount
+    // This could be expanded to handle multiple concurrent requests
+  }, [selectedPlanId, chatMessages, updatePlanName])
+
   const value = useMemo<AppContextValue>(() => ({
     repositories,
     selectedRepositoryId,
@@ -224,10 +303,12 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     selectPlan,
     createPlan,
     deletePlan,
+    updatePlanName,
     chatMessages,
     sendMessage,
+    generatePlan,
     artifacts,
-  }), [repositories, selectedRepositoryId, selectRepository, createRepository, deleteRepository, plans, selectedPlanId, selectPlan, createPlan, deletePlan, chatMessages, sendMessage, artifacts])
+  }), [repositories, selectedRepositoryId, selectRepository, createRepository, deleteRepository, plans, selectedPlanId, selectPlan, createPlan, deletePlan, updatePlanName, chatMessages, sendMessage, generatePlan, artifacts])
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }

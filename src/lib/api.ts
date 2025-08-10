@@ -136,6 +136,86 @@ export class ApiClient {
       body: JSON.stringify(payload),
     });
   }
+
+  // Business logic - plan generation with streaming
+  generatePlan(
+    planId: string,
+    payload: {
+      user_message: string;
+      plan_artifact?: any;
+      chat_messages?: any[];
+    },
+    onMessage: (data: any) => void,
+    onError: (error: any) => void,
+    onComplete: () => void
+  ): () => void {
+    const url = `${this.baseUrl}/api/business/plans/${planId}/generate`;
+
+    // Make the POST request and handle the streaming response
+    fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    })
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error('No response body reader available');
+      }
+
+      const decoder = new TextDecoder();
+
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            break;
+          }
+
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const jsonStr = line.slice(6); // Remove 'data: '
+                if (jsonStr.trim()) {
+                  const data = JSON.parse(jsonStr);
+                  if (data.type === 'complete') {
+                    onComplete();
+                    return;
+                  } else if (data.type === 'error') {
+                    onError(new Error(data.message));
+                    return;
+                  } else {
+                    onMessage(data);
+                  }
+                }
+              } catch (parseError) {
+                console.warn('Failed to parse SSE line:', line, parseError);
+              }
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
+      }
+    })
+    .catch(onError);
+
+    // Return a cleanup function
+    return () => {
+      // In a real implementation, you might want to track and cancel the fetch
+      console.log('Cleanup called for plan generation');
+    };
+  }
 }
 
 // Export a default instance

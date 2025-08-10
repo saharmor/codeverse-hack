@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import os
 import sys
-from enum import Enum
 from typing import AsyncGenerator, Dict, List, Optional, Tuple
 
 try:
@@ -22,67 +21,14 @@ except Exception:  # pragma: no cover
     )
     raise
 
-
-# Section indicator headers used across prompts and streaming logic
-PLAN_HEADER = "# Plan draft"
-CLARIFY_HEADER = "# Clarifying questions"
-
-
-SYSTEM_PROMPT = f"""
-You are **Claude Code**, an AI agent assistant specialized in helping developers draft
-high-quality implementation plans. Given the user's raw notes below, produce the output using
-the following strict format:
-
-Formatting requirements (critical):
-- The very first line of your response must be exactly: `{PLAN_HEADER}`.
-- Do not include anything before that first line (no preface, greetings, or metadata).
-- Under that heading, write the plan content in Markdown.
-- Conclude with a section titled `{CLARIFY_HEADER}`.
-- Do not use emojis in your response.
-
-Plan content guidelines:
-- Produce a clear, organized outline breaking down the development into modules or tasks.
-- Include structure, key steps, dependencies, technology stack, code architecture, and testing strategy.
-- Use a **plan-and-solve** approach: first outline the overall plan, then optionally detail sub-steps.
-
-Clarifying questions guidelines:
-- List any important missing information that would impact the plan's accuracy.
-- Focus on user experience, feature edge cases, data inputs/outputs, integration
-  requirements, constraints, or any ambiguity.
-- No more than 8 clarifying questions; choose only the most important.
-"""
-
-SYSTEM_PROMPT_NON_FIRST_ITERATION = f"""
-You are **Claude Code**, an AI agent assistant specialized in helping developers draft
-high-quality implementation plans. This is NOT the first iteration - you are reviewing and
-refining an existing plan based on additional context from the user.
-
-You will be provided with:
-1. **Previous Plan Draft** - The current plan that needs review
-2. **Previous Clarifying Questions** - Questions that were asked before
-3. **User Raw Notes** - Additional context, answers, or modifications from the user
-
-Formatting requirements (critical):
-- The very first line of your response must be exactly: `{PLAN_HEADER}`.
-- Do not include anything before that first line (no preface, greetings, or metadata).
-- Under that heading, write the updated plan content in Markdown.
-- Conclude with a section titled `{CLARIFY_HEADER}` with the remaining/open questions only.
-- Do not use emojis in your response.
-
-Updated plan guidelines:
-- Review the previous plan and incorporate insights from the user's raw notes.
-- Refine, expand, or modify the plan based on the new information provided.
-- Address answered clarifying questions by updating the relevant plan sections.
-- Maintain a structured approach: modules/tasks, dependencies, architecture, testing strategy.
-- Use a **plan-and-solve** approach: first outline the overall updated plan, then detail sub-steps.
-
-Updated clarifying questions guidelines:
-- Remove any questions that have been answered.
-- Add new questions that arise from the updated context or user notes.
-- Focus on remaining uncertainties about user experience, feature edge cases,
-  data inputs/outputs, integration requirements, or constraints.
-- No more than 8 clarifying questions total; prioritize the most important ones.
-"""
+# Import prompt generation utilities
+from .claude_prompts import (
+    SYSTEM_PROMPT,
+    SYSTEM_PROMPT_NON_FIRST_ITERATION,
+    ClaudeOutputManager,
+    ClaudeOutputType,
+    build_vocab_prompt,
+)
 
 
 async def _query_claude_stream(
@@ -146,11 +92,6 @@ def is_first_iteration(current_plan: Optional[str]) -> bool:
     return current_plan is None
 
 
-class ClaudeOutputType(str, Enum):
-    PLAN = "plan"
-    CLARIFY_QUESTIONS = "clarify_questions"
-
-
 async def generate_plan(
     project_dir: str,
     user_raw_notes: str,
@@ -193,8 +134,9 @@ async def generate_plan(
     current_type: Optional[ClaudeOutputType] = None
     buffer: str = ""
     # To guard against splitting a header across chunk boundaries, retain a small tail
-    max_header_len = max(len(PLAN_HEADER), len(CLARIFY_HEADER))
+    max_header_len = ClaudeOutputManager.get_max_header_length()
     tail_keep = max(0, max_header_len - 1)
+    om = ClaudeOutputManager  # Shorthand for cleaner code
 
     async for chunk in _query_claude_stream(
         working_directory=project_dir,
@@ -209,13 +151,14 @@ async def generate_plan(
         while True:
             # Initialize current section when first header appears
             if current_type is None:
-                plan_idx = buffer.find(PLAN_HEADER)
-                clarify_idx = buffer.find(CLARIFY_HEADER)
                 candidates = []
-                if plan_idx != -1:
-                    candidates.append((plan_idx, ClaudeOutputType.PLAN))
-                if clarify_idx != -1:
-                    candidates.append((clarify_idx, ClaudeOutputType.CLARIFY_QUESTIONS))
+
+                # Check for all possible section headers
+                for section in om.get_all_sections():
+                    idx = buffer.find(section.header)
+                    if idx != -1:
+                        output_type = ClaudeOutputType(section.name)
+                        candidates.append((idx, output_type))
 
                 if not candidates:
                     # No header found yet; wait for more data
@@ -234,145 +177,42 @@ async def generate_plan(
                 buffer = buffer[first_idx:]
                 # Continue with known current_type
 
-            # With a known current_type, look for a boundary to the other section
-            if current_type == ClaudeOutputType.PLAN:
-                next_idx = buffer.find(CLARIFY_HEADER)
-                if next_idx != -1:
-                    plan_part = buffer[:next_idx]
-                    if plan_part:
-                        yield (ClaudeOutputType.PLAN, plan_part)
-                    buffer = buffer[next_idx:]
-                    current_type = ClaudeOutputType.CLARIFY_QUESTIONS
-                    # Loop to process remaining buffer under new type
-                    continue
-                else:
-                    # No boundary yet; flush safe portion leaving a small tail to catch partial header
-                    if len(buffer) > tail_keep:
-                        emit_text = buffer[:-tail_keep] if tail_keep > 0 else buffer
-                        if emit_text:
-                            yield (ClaudeOutputType.PLAN, emit_text)
-                        buffer = buffer[-tail_keep:] if tail_keep > 0 else ""
-                    break
+            # With a known current_type, look for boundaries to other sections
+            # Find all possible next section headers
+            next_candidates = []
+            for section in om.get_all_sections():
+                if section.name != current_type.value:  # Don't look for current section header
+                    idx = buffer.find(section.header)
+                    if idx != -1:
+                        output_type = ClaudeOutputType(section.name)
+                        next_candidates.append((idx, output_type))
 
-            if current_type == ClaudeOutputType.CLARIFY_QUESTIONS:
-                # Normally the last section; still guard if plan header appears again
-                next_idx = buffer.find(PLAN_HEADER)
-                if next_idx != -1:
-                    clarify_part = buffer[:next_idx]
-                    if clarify_part:
-                        yield (ClaudeOutputType.CLARIFY_QUESTIONS, clarify_part)
-                    buffer = buffer[next_idx:]
-                    current_type = ClaudeOutputType.PLAN
-                    continue
-                else:
-                    if len(buffer) > tail_keep:
-                        emit_text = buffer[:-tail_keep] if tail_keep > 0 else buffer
-                        if emit_text:
-                            yield (ClaudeOutputType.CLARIFY_QUESTIONS, emit_text)
-                        buffer = buffer[-tail_keep:] if tail_keep > 0 else ""
-                    break
+            if next_candidates:
+                # Found a boundary to another section
+                next_candidates.sort(key=lambda x: x[0])
+                next_idx, next_type = next_candidates[0]
+
+                # Emit the current section content
+                current_part = buffer[:next_idx]
+                if current_part:
+                    yield (current_type, current_part)
+
+                # Move to next section
+                buffer = buffer[next_idx:]
+                current_type = next_type
+                continue
+            else:
+                # No boundary found; flush safe portion leaving a small tail
+                if len(buffer) > tail_keep:
+                    emit_text = buffer[:-tail_keep] if tail_keep > 0 else buffer
+                    if emit_text:
+                        yield (current_type, emit_text)
+                    buffer = buffer[-tail_keep:] if tail_keep > 0 else ""
+                break
 
     # End of stream: flush anything remaining in buffer
     if buffer and current_type is not None:
         yield (current_type, buffer)
-
-
-def _build_vocab_prompt(
-    optional_repo_hint: Optional[str],
-    max_files: int,
-    max_terms: int,
-) -> str:
-    """Build the vocabulary extraction prompt for Claude Code.
-
-    The prompt instructs Claude Code to read the repository and output strict JSON
-    with keys "relevant_files" and "relevant_terms".
-    """
-    repo_hint_section = f"- optional_repo_hint: {optional_repo_hint}\n" if optional_repo_hint else ""
-
-    return f"""
-You are Claude Code with access to the project repository. Your task is to extract:
-1) relevant_files — the main/entry-point files in the **root** of the repo (relative paths
-from root, no subpaths unless an entry point only exists under a conventional subdir like
-`cmd/<app>/main.go` or `bin/*`).
-2) relevant_terms — the high-signal terms (proper nouns, multiword phrases, CLI commands,
-model names, API names) that repeatedly appear in code/README/config and should be used as
-**custom vocabulary for a speech-to-text service**.
-
-Why this matters: these terms will be passed to an STT engine as biasing vocabulary.
-Include exact casing (e.g., "Claude Code", "Codeverse", "WebSocket", "gRPC", "Next.js",
-"OpenAI"), multiword phrases ("CLI coding agents"), acronyms, domain entities,
-product/feature names, CLI subcommands, environment variable keys, major class/component
-names, and public API route names. Exclude generic words ("server", "request", "user")
-unless they are branded or uniquely significant in this repo.
-
-INPUTS (provided by the caller; if omitted, infer by reading the workspace):
-{repo_hint_section}- max_files: integer cap for relevant_files (default {max_files}).
-- max_terms: integer cap for relevant_terms (default {max_terms}).
-
-SELECTION HEURISTICS
-Relevant files (root-focused):
-- Python: files containing `if __name__ == "__main__"`; `main.py`, `app.py`, `serve.py`;
-  entry points from `pyproject.toml [project.scripts]` or `setup.cfg`/`setup.py`;
-  `manage.py` (Django).
-- Node/TS: `package.json` fields `"main"`, `"bin"`, `"exports"`, and scripts like
-  `"start"`, `"dev"`; root `index.(js|ts)`, `server.(js|ts)`, `next.config.js` (Next.js uses
-  `app/` or `pages/` for app entry, but root scripts may launch it).
-- Go: `cmd/<app>/main.go` (treat as root entry if present), or root `main.go`.
-- Rust: `src/main.rs`.
-- Java/Kotlin: root build files; main launcher classes; Spring Boot `@SpringBootApplication`.
-- C#: `Program.cs`.
-- Ruby: `bin/*`, `config.ru`.
-- Framework launchers and CLIs: anything referenced by Procfile, Dockerfile
-  `CMD/ENTRYPOINT`, Makefile primary targets, `justfile` default, `bazel`/`pants` top targets.
-Exclude: tests, examples, docs, migrations, vendored deps, build artifacts, lockfiles, images.
-
-Relevant terms (keep signal high):
-- Product/project names, app names, codenames.
-- Feature flags, core domain nouns (e.g., “plan canvas”, “agent runner”).
-- CLI names and subcommands (`codeverse plan`,
-  `codeverse run --repo`).
-- Prominent library/framework names actually used (e.g., "Windsurf", "Cursor", "FastAPI",
-  "Next.js", "Playwright"), major protocol names ("WebRTC", "SSE", "gRPC").
-- Public API routes (`/api/plan`, `/v1/agents/run`), event types,
-  queue/topic names.
-- Environment variable keys (`CODEVERSE_API_KEY`, `OPENAI_MODEL`), config keys,
-  dataset/model names.
-- Filenames (without paths) that are often referenced in docs/issues
-  (`process_events.py`, `main.py`).
-Deduplicate, preserve exact casing, keep multiword phrases intact. Prefer specificity over volume.
-
-PROCEDURE
-1) Read: repository tree, README, package/build files,
-Dockerfile/Procfile/Makefile/justfile, primary app files in root, and configs that declare
-entry points.
-2) Identify root-level main files using the heuristics above. Keep to max_files by
-importance.
-3) Collect candidate terms from names, configs, README, code identifiers/components,
-CLI definitions, env/config keys, and any provided optional_repo_hint. Filter to the most
-salient (frequency + centrality), keep to max_terms.
-4) Sort relevant_files by likely launch order/importance; sort relevant_terms by
-importance (most important first).
-5) Output strict JSON only. No comments, no trailing commas, no explanations.
-
-OUTPUT SCHEMA (STRICT):
-{{
-  "relevant_files": ["<filename.ext>", "..."],
-  "relevant_terms": ["<Exact Casing Term>", "..."]
-}}
-
-VALIDATION
-- Always return both keys, even if arrays are empty.
-- Paths in relevant_files should be **root-relative filenames** (e.g., "main.py").
-  Only include a subpath if conventional (e.g., "cmd/api/main.go", "bin/cli").
-- Ensure JSON parses.
-
-NOW DO THIS
-- Use max_files = {max_files} and max_terms = {max_terms} unless the caller
-  overrides.
-- If you find strong hints of these terms, include them (case-preserved):
-  ["Codeverse", "Claude Code", "CLI coding agents"].
-- Return only the JSON object.
-"""
 
 
 async def get_relevant_vocabulary(
@@ -387,7 +227,7 @@ async def get_relevant_vocabulary(
       - "relevent_files": List[str]  (note: spelling per consumer expectation)
       - "bespoke_terms": List[str]
     """
-    prompt = _build_vocab_prompt(optional_repo_hint, max_files, max_terms)
+    prompt = build_vocab_prompt(optional_repo_hint, max_files, max_terms)
 
     # Collect the streamed JSON result
     collected: List[str] = []
@@ -481,7 +321,15 @@ def _build_user_notes_from_context(plan_context: Dict[str, object]) -> Tuple[str
     prev_questions_text: Optional[str] = None
     if isinstance(existing_artifact, dict):
         try:
-            parts.extend(["## Current Plan Artifact", "```json", json.dumps(existing_artifact, indent=2), "```", ""])
+            parts.extend(
+                [
+                    "## Current Plan Artifact",
+                    "```json",
+                    json.dumps(existing_artifact, indent=2),
+                    "```",
+                    "",
+                ]
+            )
         except Exception:
             pass
         # Try extracting structured fields if present

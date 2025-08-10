@@ -15,7 +15,7 @@ function Avatar({ role }: { role: 'user' | 'assistant' }) {
 }
 
 export default function ChatWindow() {
-  const { chatMessages, sendMessage, plans, selectedPlanId } = useAppContext()
+  const { chatMessages, sendMessage, generatePlan, plans, selectedPlanId } = useAppContext()
   const [input, setInput] = useState('')
   const [voiceBusy, setVoiceBusy] = useState(false)
   const [inlineRecording, setInlineRecording] = useState(false)
@@ -31,7 +31,8 @@ export default function ChatWindow() {
 
   const handleSend = () => {
     if (!input.trim()) return
-    sendMessage(input)
+    // Use generatePlan instead of sendMessage for plan generation
+    generatePlan(input)
     setInput('')
   }
 
