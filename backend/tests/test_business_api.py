@@ -4,6 +4,7 @@ Test script for the business logic API endpoint
 """
 import json
 
+import pytest
 import requests
 
 BASE_URL = "http://localhost:8000"
@@ -20,16 +21,27 @@ def test_plan_generation():
     import uuid
 
     unique_id = str(uuid.uuid4())[:8]
+    repo_path = f"/tmp/test-repos/test-business-{unique_id}"
+
+    # Create the directory structure for testing
+    import os
+
+    os.makedirs(repo_path, exist_ok=True)
+
+    # Create a basic README file to make it look like a real repo
+    with open(f"{repo_path}/README.md", "w") as f:
+        f.write("# Test Business Repository\n\nThis is a test repository for AI integration testing.\n")
+
     repo_data = {
         "name": f"test-business-repo-{unique_id}",
-        "path": f"/Users/galw/Git/innovation/codeverse-hack-{unique_id}",
+        "path": repo_path,
         "git_url": f"https://github.com/user/test-business-repo-{unique_id}.git",
     }
     response = requests.post(f"{BASE_URL}/api/repositories", json=repo_data)
     if response.status_code != 200:
         print(f"❌ Repository creation failed: {response.status_code}")
         print(response.text)
-        return False
+        pytest.fail("Request failed")
 
     repo = response.json()
     repo_id = repo["id"]
@@ -49,7 +61,7 @@ def test_plan_generation():
     if response.status_code != 200:
         print(f"❌ Plan creation failed: {response.status_code}")
         print(response.text)
-        return False
+        pytest.fail("Request failed")
 
     plan = response.json()
     plan_id = plan["id"]
@@ -74,7 +86,7 @@ def test_plan_generation():
     if response.status_code != 200:
         print(f"❌ Artifact creation failed: {response.status_code}")
         print(response.text)
-        return False
+        pytest.fail("Request failed")
 
     artifact = response.json()
     print(f"✅ Artifact created: {artifact['id']}")
@@ -99,7 +111,7 @@ def test_plan_generation():
     if response.status_code != 200:
         print(f"❌ Chat creation failed: {response.status_code}")
         print(response.text)
-        return False
+        pytest.fail("Request failed")
 
     chat = response.json()
     print(f"✅ Chat created: {chat['id']}")
@@ -144,7 +156,7 @@ def test_plan_generation():
         if response.status_code != 200:
             print(f"❌ Plan generation failed: {response.status_code}")
             print(response.text)
-            return False
+            pytest.fail("Request failed")
 
         print("✅ Plan generation started, streaming response:")
         print("-" * 50)
@@ -171,7 +183,7 @@ def test_plan_generation():
                                 break
                             elif data.get("type") == "error":
                                 print(f"\n❌ Error during generation: {data['message']}")
-                                return False
+                                pytest.fail("Request failed")
                         except json.JSONDecodeError:
                             # If it's not JSON, treat as plain text
                             print(line_str, end="", flush=True)
@@ -182,19 +194,17 @@ def test_plan_generation():
 
         if chunk_count == 0:
             print("⚠️  No chunks received - this might indicate an issue")
-            return False
+            pytest.fail("Request failed")
 
         print("\n✅ Business logic endpoint test completed successfully!")
         print(f"Generated response with {chunk_count} chunks")
 
     except requests.exceptions.Timeout:
         print("❌ Request timed out")
-        return False
+        pytest.fail("Request timed out")
     except requests.exceptions.RequestException as e:
         print(f"❌ Request failed: {e}")
-        return False
-
-    return True
+        pytest.fail(f"Request failed: {e}")
 
 
 if __name__ == "__main__":

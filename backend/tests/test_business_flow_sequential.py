@@ -27,7 +27,7 @@ class TestBusinessFlowSequential:
         """Step 1: Create a repository."""
         # Use unique path for each test run to avoid constraint violations
         unique_id = str(uuid.uuid4())[:8]
-        repository_path = f"../../test-repos/test-codeverse-{unique_id}"
+        repository_path = f"/tmp/test-repos/test-codeverse-{unique_id}"
 
         # Create the directory structure for testing
         import os
@@ -37,7 +37,6 @@ class TestBusinessFlowSequential:
         # Create a basic README file to make it look like a real repo
         with open(f"{repository_path}/README.md", "w") as f:
             f.write("# Test CodeVerse App\n\nThis is a test repository for mobile chat application development.\n")
-
         repository_data = {
             "name": f"test-codeverse-app-{unique_id}",
             "path": repository_path,
