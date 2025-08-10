@@ -7,7 +7,7 @@
     "withGlobalTauri": false
   },
   "package": {
-    "productName": "Tauri Next.js FastAPI App",
+    "productName": "Codeverse",
     "version": "0.1.0"
   },
   "tauri": {
@@ -42,7 +42,7 @@
         "fullscreen": false,
         "resizable": true,
         "decorations": true,
-        "title": "Tauri Next.js FastAPI App",
+        "title": "Codeverse",
         "width": 1200,
         "height": 800,
         "minWidth": 420,
