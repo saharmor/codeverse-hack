@@ -7,16 +7,14 @@ Claude Code, suitable for consumption by other modules.
 
 from __future__ import annotations
 
-import sys
 import json
-from typing import AsyncGenerator, Dict, List, Optional, Tuple
+import os
+import sys
 from enum import Enum
+from typing import AsyncGenerator, Dict, List, Optional, Tuple
 
 try:
-    from claude_code_sdk import (
-        ClaudeCodeOptions,
-        query,
-    )
+    from claude_code_sdk import ClaudeCodeOptions, query
 except Exception:  # pragma: no cover
     print(
         "Error: Failed to import 'claude_code_sdk'.\nInstall it with: pip install claude-code-sdk",
@@ -92,6 +90,28 @@ async def _query_claude_stream(
     - Ignores intermediate thinking/assistant/user/system messages.
     - Prints SDK-reported errors to stderr without yielding them.
     """
+    # Ensure Claude CLI is in PATH - try common locations
+    claude_paths = [
+        os.path.expanduser("~/.claude/local"),  # Official Claude CLI location
+        "/usr/local/bin",  # Common system-wide install location
+        os.path.expanduser("~/node_modules/.bin"),  # npm local install
+    ]
+
+    current_path = os.environ.get("PATH", "")
+    path_updated = False
+
+    for claude_path in claude_paths:
+        if os.path.exists(claude_path) and claude_path not in current_path:
+            os.environ["PATH"] = f"{claude_path}:{current_path}"
+            current_path = os.environ["PATH"]  # Update for next iteration
+            path_updated = True
+
+    # Also check if CLAUDE_CLI_PATH environment variable is set
+    custom_claude_path = os.environ.get("CLAUDE_CLI_PATH")
+    if custom_claude_path and os.path.exists(custom_claude_path) and custom_claude_path not in current_path:
+        os.environ["PATH"] = f"{custom_claude_path}:{current_path}"
+        path_updated = True
+
     saw_any_delta = False
     async for message in query(
         prompt=prompt,
@@ -118,6 +138,7 @@ async def _query_claude_stream(
             result_text = getattr(message, "result", None)
             if result_text and not saw_any_delta:
                 yield result_text
+
 
 def is_first_iteration(current_plan: Optional[str]) -> bool:
     return current_plan is None
@@ -147,25 +168,25 @@ async def generate_plan(
     else:
         # Non-first iteration - use specialized system prompt and include context
         system_prompt = SYSTEM_PROMPT_NON_FIRST_ITERATION
-        
+
         # Build comprehensive prompt with previous context
         prompt_parts = []
-        
+
         if current_plan:
             prompt_parts.append("## Previous Plan Draft\n")
             prompt_parts.append(current_plan)
             prompt_parts.append("\n\n")
-        
+
         if prev_clarfying_questions:
             prompt_parts.append("## Previous Clarifying Questions\n")
             prompt_parts.append(prev_clarfying_questions)
             prompt_parts.append("\n\n")
-        
+
         prompt_parts.append("## User Raw Notes\n")
         prompt_parts.append(user_raw_notes)
-        
+
         prompt = "".join(prompt_parts)
-    
+
     # Streaming classification state
     current_type: Optional[ClaudeOutputType] = None
     buffer: str = ""
@@ -254,7 +275,6 @@ async def generate_plan(
         yield (current_type, buffer)
 
 
-
 def _build_vocab_prompt(
     optional_repo_hint: Optional[str],
     max_files: int,
@@ -265,9 +285,7 @@ def _build_vocab_prompt(
     The prompt instructs Claude Code to read the repository and output strict JSON
     with keys "relevant_files" and "relevant_terms".
     """
-    repo_hint_section = (
-        f"- optional_repo_hint: {optional_repo_hint}\n" if optional_repo_hint else ""
-    )
+    repo_hint_section = f"- optional_repo_hint: {optional_repo_hint}\n" if optional_repo_hint else ""
 
     return f"""
 You are Claude Code with access to the project repository. Your task is to extract:
@@ -374,8 +392,8 @@ async def get_relevant_vocabulary(
     relevant_terms = parsed_json.get("relevant_terms") or []
 
     # Enforce caps just in case
-    relevant_files = list(relevant_files)[: max_files]
-    relevant_terms = list(relevant_terms)[: max_terms]
+    relevant_files = list(relevant_files)[:max_files]
+    relevant_terms = list(relevant_terms)[:max_terms]
 
     return {
         "relevent_files": relevant_files,
@@ -386,6 +404,7 @@ async def get_relevant_vocabulary(
 # -----------------------------------------------------------------------------
 # Backwards-compatible API for business router (streams raw strings)
 # -----------------------------------------------------------------------------
+
 
 def _build_user_notes_from_context(plan_context: Dict[str, object]) -> Tuple[str, Optional[str], Optional[str]]:
     """Construct rich user notes and optional previous sections from plan_context.
@@ -403,24 +422,28 @@ def _build_user_notes_from_context(plan_context: Dict[str, object]) -> Tuple[str
     # Basic context
     if plan is not None:
         try:
-            parts.extend([
-                "## Plan Context",
-                f"Name: {getattr(plan, 'name', '')}",
-                f"Target Branch: {getattr(plan, 'target_branch', '')}",
-                f"Description: {getattr(plan, 'description', '') or 'No description provided'}",
-                "",
-            ])
+            parts.extend(
+                [
+                    "## Plan Context",
+                    f"Name: {getattr(plan, 'name', '')}",
+                    f"Target Branch: {getattr(plan, 'target_branch', '')}",
+                    f"Description: {getattr(plan, 'description', '') or 'No description provided'}",
+                    "",
+                ]
+            )
         except Exception:
             pass
 
     if repository is not None:
         try:
-            parts.extend([
-                "## Repository",
-                f"Name: {getattr(repository, 'name', '')}",
-                f"Path: {getattr(repository, 'path', '')}",
-                "",
-            ])
+            parts.extend(
+                [
+                    "## Repository",
+                    f"Name: {getattr(repository, 'name', '')}",
+                    f"Path: {getattr(repository, 'path', '')}",
+                    "",
+                ]
+            )
         except Exception:
             pass
 
@@ -435,7 +458,11 @@ def _build_user_notes_from_context(plan_context: Dict[str, object]) -> Tuple[str
         # Try extracting structured fields if present
         for key in ("clarifying_questions", "questions"):
             if key in existing_artifact and isinstance(existing_artifact[key], (list, str)):
-                prev_questions_text = "\n".join(existing_artifact[key]) if isinstance(existing_artifact[key], list) else str(existing_artifact[key])
+                prev_questions_text = (
+                    "\n".join(existing_artifact[key])
+                    if isinstance(existing_artifact[key], list)
+                    else str(existing_artifact[key])
+                )
                 break
         for key in ("plan", "draft", "overview"):
             if key in existing_artifact and isinstance(existing_artifact[key], (dict, list, str)):
@@ -460,13 +487,15 @@ def _build_user_notes_from_context(plan_context: Dict[str, object]) -> Tuple[str
             parts.append("")
 
     # Current request
-    parts.extend([
-        "## Current Request",
-        f"**User:** {user_message}",
-        "",
-        "## Instructions",
-        "Provide a structured implementation plan. Follow the formatting instructions at the top of the system prompt.",
-    ])
+    parts.extend(
+        [
+            "## Current Request",
+            f"**User:** {user_message}",
+            "",
+            "## Instructions",
+            "Provide a structured implementation plan. Follow the formatting instructions at the top of the system prompt.",
+        ]
+    )
 
     return ("\n".join(parts), prev_questions_text, current_plan_text)
 
