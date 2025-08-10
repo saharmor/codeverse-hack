@@ -106,8 +106,36 @@ def test_api_endpoints():
         print(response.text)
         pytest.fail("Request failed")
 
+    # Test get latest plan version
+    print("\n7. Testing get latest plan version...")
+    response = requests.get(f"{BASE_URL}/api/plans/{plan_id}/latest_version")
+    if response.status_code == 200:
+        print("✅ Get latest plan version successful")
+        latest_version = response.json()
+        print(f"Latest version: {latest_version['version']}")
+        print(json.dumps(latest_version, indent=2))
+    else:
+        print(f"❌ Get latest plan version failed: {response.status_code}")
+        print(response.text)
+        pytest.fail("Request failed")
+
+    # Test get plan versions (backward compatibility endpoint)
+    print("\n7b. Testing get plan versions (backward compatibility)...")
+    response = requests.get(f"{BASE_URL}/api/plans/{plan_id}/versions")
+    if response.status_code == 200:
+        print("✅ Get plan versions successful")
+        versions_list = response.json()
+        print(f"Versions list length: {len(versions_list)}")
+        if len(versions_list) > 0:
+            print(f"First version: {versions_list[0]['version']}")
+        print(json.dumps(versions_list, indent=2))
+    else:
+        print(f"❌ Get plan versions failed: {response.status_code}")
+        print(response.text)
+        pytest.fail("Request failed")
+
     # Create chat session
-    print("\n7. Testing chat session creation...")
+    print("\n8. Testing chat session creation...")
     chat_data = {
         "plan_id": plan_id,
         "messages": [

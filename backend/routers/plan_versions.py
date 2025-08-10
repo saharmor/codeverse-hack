@@ -1,7 +1,7 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
@@ -24,6 +24,33 @@ async def get_plan_versions(plan_id: str, db: AsyncSession = Depends(get_db)):
     result = await db.execute(select(PlanVersion).where(PlanVersion.plan_id == plan_id))
     plan_versions = result.scalars().all()
     return plan_versions
+
+
+@router.get("/plans/{plan_id}/latest_version", response_model=PlanVersionSchema)
+async def get_latest_plan_version(plan_id: str, db: AsyncSession = Depends(get_db)):
+    # Check if plan exists
+    result = await db.execute(select(Plan).where(Plan.id == plan_id))
+    plan = result.scalar_one_or_none()
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    # Get the latest plan version (highest version number)
+    result = await db.execute(
+        select(PlanVersion).where(PlanVersion.plan_id == plan_id).order_by(desc(PlanVersion.version)).limit(1)
+    )
+    latest_version = result.scalar_one_or_none()
+
+    if not latest_version:
+        raise HTTPException(status_code=404, detail="No versions found for this plan")
+
+    return latest_version
+
+
+@router.get("/plans/{plan_id}/versions", response_model=List[PlanVersionSchema])
+async def get_plan_versions_latest(plan_id: str, db: AsyncSession = Depends(get_db)):
+    """Backward compatibility endpoint that returns the latest version as an array."""
+    latest_version = await get_latest_plan_version(plan_id, db)
+    return [latest_version]
 
 
 @router.post("/plans/{plan_id}/plan_versions", response_model=PlanVersionSchema)
