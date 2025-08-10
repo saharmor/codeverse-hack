@@ -95,7 +95,7 @@ def is_first_iteration(current_plan: Optional[str]) -> bool:
 async def generate_plan(
     project_dir: str,
     user_raw_notes: str,
-    prev_clarfying_questions: Optional[str],
+    prev_clarifying_questions: Optional[str],
     current_plan: Optional[str],
 ) -> AsyncGenerator[Tuple[ClaudeOutputType, str], None]:
     """Stream a plan for the given project based on raw notes.
@@ -120,9 +120,9 @@ async def generate_plan(
             prompt_parts.append(current_plan)
             prompt_parts.append("\n\n")
 
-        if prev_clarfying_questions:
+        if prev_clarifying_questions:
             prompt_parts.append("## Previous Clarifying Questions\n")
-            prompt_parts.append(prev_clarfying_questions)
+            prompt_parts.append(prev_clarifying_questions)
             prompt_parts.append("\n\n")
 
         prompt_parts.append("## User Raw Notes\n")
@@ -167,14 +167,22 @@ async def generate_plan(
                 candidates.sort(key=lambda x: x[0])
                 first_idx, first_type = candidates[0]
 
-                # Emit any preamble (rare) as belonging to the first section we see
-                if first_idx > 0:
-                    preamble = buffer[:first_idx]
-                    if preamble:
-                        yield (first_type, preamble)
-
+                # Skip any preamble content - only emit content AFTER we see section headers
+                # This ensures we don't incorrectly categorize content that appears before "# Plan name"
                 current_type = first_type
-                buffer = buffer[first_idx:]
+                
+                # Skip past the header itself, not just to where it starts
+                header_text = None
+                for section in om.get_all_sections():
+                    if ClaudeOutputType(section.name) == first_type:
+                        header_text = section.header
+                        break
+                
+                if header_text:
+                    header_end_idx = first_idx + len(header_text)
+                    buffer = buffer[header_end_idx:]
+                else:
+                    buffer = buffer[first_idx:]
                 # Continue with known current_type
 
             # With a known current_type, look for boundaries to other sections
@@ -192,13 +200,24 @@ async def generate_plan(
                 next_candidates.sort(key=lambda x: x[0])
                 next_idx, next_type = next_candidates[0]
 
-                # Emit the current section content
+                # Emit the current section content (up to the next header)
                 current_part = buffer[:next_idx]
                 if current_part:
                     yield (current_type, current_part)
 
-                # Move to next section
-                buffer = buffer[next_idx:]
+                # Move to next section, skipping past the header text
+                header_text = None
+                for section in om.get_all_sections():
+                    if ClaudeOutputType(section.name) == next_type:
+                        header_text = section.header
+                        break
+                
+                if header_text:
+                    header_end_idx = next_idx + len(header_text)
+                    buffer = buffer[header_end_idx:]
+                else:
+                    buffer = buffer[next_idx:]
+                    
                 current_type = next_type
                 continue
             else:
