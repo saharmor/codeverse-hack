@@ -3,7 +3,7 @@ Plan and PlanArtifact models for storing planning information
 """
 import enum
 
-from sqlalchemy import JSON, Column, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import Column, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from .base import BaseModel
@@ -40,7 +40,7 @@ class PlanVersion(BaseModel):
     __tablename__ = "plan_artifacts"
 
     plan_id = Column(String(36), ForeignKey("plans.id", ondelete="CASCADE"), nullable=False)
-    content = Column(JSON, nullable=False)
+    content = Column(Text, nullable=False)
     version = Column(Integer, nullable=False, default=1)
 
     # Relationships

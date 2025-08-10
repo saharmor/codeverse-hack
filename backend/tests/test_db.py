@@ -54,16 +54,16 @@ async def test_database():
             await session.refresh(plan)
             print(f"✓ Created plan: {plan}")
 
-            # Create a plan artifact
-            artifact = PlanVersion(
+            # Create a plan version
+            plan_version = PlanVersion(
                 plan_id=plan.id,
-                content={"steps": ["Step 1", "Step 2", "Step 3"]},
+                content="Step 1\nStep 2\nStep 3",
                 version=1,
             )
-            session.add(artifact)
+            session.add(plan_version)
             await session.commit()
-            await session.refresh(artifact)
-            print(f"✓ Created plan artifact: {artifact}")
+            await session.refresh(plan_version)
+            print(f"✓ Created plan version: {plan_version}")
 
             # Create a chat session
             chat = ChatSession(

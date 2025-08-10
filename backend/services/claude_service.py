@@ -282,7 +282,7 @@ def _build_user_notes_from_context(plan_context: Dict[str, object]) -> Tuple[str
     """
     plan = plan_context.get("plan")
     repository = plan_context.get("repository")
-    existing_artifact = plan_context.get("existing_artifact")
+    existing_plan_version = plan_context.get("existing_plan_version")
     chat_history = plan_context.get("chat_history", [])
     user_message = plan_context.get("user_message")
 
@@ -316,31 +316,31 @@ def _build_user_notes_from_context(plan_context: Dict[str, object]) -> Tuple[str
         except Exception:
             pass
 
-    # Existing artifact as context
+    # Existing plan version as context
     current_plan_text: Optional[str] = None
     prev_questions_text: Optional[str] = None
-    
-    if existing_artifact is not None:
-        if isinstance(existing_artifact, str):
-            # Handle string artifacts (markdown content from frontend)
+
+    if existing_plan_version is not None:
+        if isinstance(existing_plan_version, str):
+            # Handle string plan versions (markdown content from frontend)
             parts.extend(
                 [
                     "## Current Plan (Markdown)",
                     "```markdown",
-                    existing_artifact,
+                    existing_plan_version,
                     "```",
                     "",
                 ]
             )
-            current_plan_text = existing_artifact
-        elif isinstance(existing_artifact, dict):
-            # Handle dictionary artifacts (legacy format)
+            current_plan_text = existing_plan_version
+        elif isinstance(existing_plan_version, dict):
+            # Handle dictionary plan versions (legacy format)
             try:
                 parts.extend(
                     [
-                        "## Current Plan Artifact",
+                        "## Current Plan Version",
                         "```json",
-                        json.dumps(existing_artifact, indent=2),
+                        json.dumps(existing_plan_version, indent=2),
                         "```",
                         "",
                     ]
@@ -349,23 +349,23 @@ def _build_user_notes_from_context(plan_context: Dict[str, object]) -> Tuple[str
                 pass
             # Try extracting structured fields if present
             for key in ("clarifying_questions", "questions"):
-                if key in existing_artifact and isinstance(existing_artifact[key], (list, str)):
+                if key in existing_plan_version and isinstance(existing_plan_version[key], (list, str)):
                     prev_questions_text = (
-                        "\n".join(existing_artifact[key])
-                        if isinstance(existing_artifact[key], list)
-                        else str(existing_artifact[key])
+                        "\n".join(existing_plan_version[key])
+                        if isinstance(existing_plan_version[key], list)
+                        else str(existing_plan_version[key])
                     )
                     break
             for key in ("plan", "draft", "overview"):
-                if key in existing_artifact and isinstance(existing_artifact[key], (dict, list, str)):
+                if key in existing_plan_version and isinstance(existing_plan_version[key], (dict, list, str)):
                     try:
                         current_plan_text = (
-                            json.dumps(existing_artifact[key], indent=2)
-                            if isinstance(existing_artifact[key], (dict, list))
-                            else str(existing_artifact[key])
+                            json.dumps(existing_plan_version[key], indent=2)
+                            if isinstance(existing_plan_version[key], (dict, list))
+                            else str(existing_plan_version[key])
                         )
                     except Exception:
-                        current_plan_text = str(existing_artifact[key])
+                        current_plan_text = str(existing_plan_version[key])
                     break
 
     # Recent chat messages (last few)

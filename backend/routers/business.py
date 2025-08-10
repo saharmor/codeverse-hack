@@ -23,7 +23,7 @@ async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any], db:
     Expected request_data:
     {
         "user_message": "string - latest user question/response",
-        "plan_artifact": {...} - current plan artifact (optional),
+        "plan_artifact": "..." - current plan version content (optional),
         "chat_messages": [...] - recent chat history (optional)
     }
     """
@@ -45,16 +45,16 @@ async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any], db:
     if not repository:
         raise HTTPException(status_code=404, detail="Repository not found")
 
-    # Get existing plan artifact (if any)
-    existing_artifact = None
-    artifact_override = request_data.get("plan_artifact")
-    if artifact_override:
-        existing_artifact = artifact_override
+    # Get existing plan version (if any)
+    existing_plan_version = None
+    plan_version_override = request_data.get("plan_artifact")
+    if plan_version_override:
+        existing_plan_version = plan_version_override
     else:
         result = await db.execute(select(PlanVersion).where(PlanVersion.plan_id == plan_id))
-        artifact = result.scalar_one_or_none()
-        if artifact:
-            existing_artifact = artifact.content
+        plan_version = result.scalar_one_or_none()
+        if plan_version:
+            existing_plan_version = plan_version.content
 
     # Get chat history
     chat_history = []
@@ -71,7 +71,7 @@ async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any], db:
     plan_context = {
         "plan": plan,
         "repository": repository,
-        "existing_artifact": existing_artifact,
+        "existing_plan_version": existing_plan_version,
         "chat_history": chat_history,
         "user_message": user_message,
     }
