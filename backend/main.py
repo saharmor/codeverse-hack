@@ -9,13 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from config import settings
 from database import get_db
-from models import ChatSession, Plan, PlanArtifact, Repository
-from routers import artifacts, business, chat, plans, repositories, transcribe
+from models import ChatSession, Plan, Repository
+from routers import business, chat, plan_versions, plans, repositories, transcribe
 from schemas import ChatSession as ChatSessionSchema
 from schemas import ChatSessionCreate, ChatSessionUpdate
 from schemas import Plan as PlanSchema
-from schemas import PlanArtifact as PlanArtifactSchema
-from schemas import PlanArtifactCreate, PlanCreate, PlanUpdate
+from schemas import PlanCreate, PlanUpdate
 from schemas import Repository as RepositorySchema
 from schemas import RepositoryCreate, RepositoryUpdate
 
@@ -37,7 +36,7 @@ app.add_middleware(
 # Include routers
 app.include_router(repositories.router)
 app.include_router(plans.router)
-app.include_router(artifacts.router)
+app.include_router(plan_versions.router)
 app.include_router(chat.router)
 app.include_router(business.router)
 app.include_router(transcribe.router)
@@ -180,76 +179,6 @@ async def delete_plan(plan_id: str, db: AsyncSession = Depends(get_db)):
     await db.delete(plan)
     await db.commit()
     return {"message": "Plan deleted successfully"}
-
-
-@app.get("/api/plans/{plan_id}/versions", response_model=List[PlanSchema])
-async def get_plan_versions(plan_id: str, db: AsyncSession = Depends(get_db)):
-    # Get the plan first to find repository_id and name
-    result = await db.execute(select(Plan).where(Plan.id == plan_id))
-    plan = result.scalar_one_or_none()
-    if not plan:
-        raise HTTPException(status_code=404, detail="Plan not found")
-
-    # Get all versions of this plan
-    result = await db.execute(
-        select(Plan).where(Plan.repository_id == plan.repository_id, Plan.name == plan.name).order_by(Plan.version)
-    )
-    versions = result.scalars().all()
-    return versions
-
-
-# Plan Artifact endpoints
-@app.get("/api/plans/{plan_id}/artifacts", response_model=List[PlanArtifactSchema])
-async def get_plan_artifacts(plan_id: str, db: AsyncSession = Depends(get_db)):
-    # Check if plan exists
-    result = await db.execute(select(Plan).where(Plan.id == plan_id))
-    plan = result.scalar_one_or_none()
-    if not plan:
-        raise HTTPException(status_code=404, detail="Plan not found")
-
-    # Get artifacts for this plan
-    result = await db.execute(select(PlanArtifact).where(PlanArtifact.plan_id == plan_id))
-    artifacts = result.scalars().all()
-    return artifacts
-
-
-@app.post("/api/plans/{plan_id}/artifacts", response_model=PlanArtifactSchema)
-async def create_plan_artifact(plan_id: str, artifact_data: PlanArtifactCreate, db: AsyncSession = Depends(get_db)):
-    # Check if plan exists
-    result = await db.execute(select(Plan).where(Plan.id == plan_id))
-    plan = result.scalar_one_or_none()
-    if not plan:
-        raise HTTPException(status_code=404, detail="Plan not found")
-
-    # Create artifact with plan_id
-    artifact_dict = artifact_data.model_dump()
-    artifact_dict["plan_id"] = plan_id
-    artifact = PlanArtifact(**artifact_dict)
-    db.add(artifact)
-    await db.commit()
-    await db.refresh(artifact)
-    return artifact
-
-
-@app.get("/api/artifacts/{artifact_id}", response_model=PlanArtifactSchema)
-async def get_plan_artifact(artifact_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(PlanArtifact).where(PlanArtifact.id == artifact_id))
-    artifact = result.scalar_one_or_none()
-    if not artifact:
-        raise HTTPException(status_code=404, detail="Artifact not found")
-    return artifact
-
-
-@app.delete("/api/artifacts/{artifact_id}")
-async def delete_plan_artifact(artifact_id: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(PlanArtifact).where(PlanArtifact.id == artifact_id))
-    artifact = result.scalar_one_or_none()
-    if not artifact:
-        raise HTTPException(status_code=404, detail="Artifact not found")
-
-    await db.delete(artifact)
-    await db.commit()
-    return {"message": "Artifact deleted successfully"}
 
 
 # Chat Session endpoints

@@ -29,7 +29,9 @@ CLARIFY_HEADER = "# Clarifying questions"
 
 
 SYSTEM_PROMPT = f"""
-You are **Claude Code**, an AI agent assistant specialized in helping developers draft high-quality implementation plans. Given the user's raw notes below, produce the output using the following strict format:
+You are **Claude Code**, an AI agent assistant specialized in helping developers draft
+high-quality implementation plans. Given the user's raw notes below, produce the output using
+the following strict format:
 
 Formatting requirements (critical):
 - The very first line of your response must be exactly: `{PLAN_HEADER}`.
@@ -45,12 +47,15 @@ Plan content guidelines:
 
 Clarifying questions guidelines:
 - List any important missing information that would impact the plan's accuracy.
-- Focus on user experience, feature edge cases, data inputs/outputs, integration requirements, constraints, or any ambiguity.
+- Focus on user experience, feature edge cases, data inputs/outputs, integration
+  requirements, constraints, or any ambiguity.
 - No more than 8 clarifying questions; choose only the most important.
 """
 
 SYSTEM_PROMPT_NON_FIRST_ITERATION = f"""
-You are **Claude Code**, an AI agent assistant specialized in helping developers draft high-quality implementation plans. This is NOT the first iteration - you are reviewing and refining an existing plan based on additional context from the user.
+You are **Claude Code**, an AI agent assistant specialized in helping developers draft
+high-quality implementation plans. This is NOT the first iteration - you are reviewing and
+refining an existing plan based on additional context from the user.
 
 You will be provided with:
 1. **Previous Plan Draft** - The current plan that needs review
@@ -74,7 +79,8 @@ Updated plan guidelines:
 Updated clarifying questions guidelines:
 - Remove any questions that have been answered.
 - Add new questions that arise from the updated context or user notes.
-- Focus on remaining uncertainties about user experience, feature edge cases, data inputs/outputs, integration requirements, or constraints.
+- Focus on remaining uncertainties about user experience, feature edge cases,
+  data inputs/outputs, integration requirements, or constraints.
 - No more than 8 clarifying questions total; prioritize the most important ones.
 """
 
@@ -285,10 +291,19 @@ def _build_vocab_prompt(
 
     return f"""
 You are Claude Code with access to the project repository. Your task is to extract:
-1) relevant_files — the main/entry-point files in the **root** of the repo (relative paths from root, no subpaths unless an entry point only exists under a conventional subdir like `cmd/<app>/main.go` or `bin/*`).
-2) relevant_terms — the high-signal terms (proper nouns, multiword phrases, CLI commands, model names, API names) that repeatedly appear in code/README/config and should be used as **custom vocabulary for a speech-to-text service**.
+1) relevant_files — the main/entry-point files in the **root** of the repo (relative paths
+from root, no subpaths unless an entry point only exists under a conventional subdir like
+`cmd/<app>/main.go` or `bin/*`).
+2) relevant_terms — the high-signal terms (proper nouns, multiword phrases, CLI commands,
+model names, API names) that repeatedly appear in code/README/config and should be used as
+**custom vocabulary for a speech-to-text service**.
 
-Why this matters: these terms will be passed to an STT engine as biasing vocabulary. Include exact casing (e.g., “Claude Code”, “Codeverse”, “WebSocket”, “gRPC”, “Next.js”, “OpenAI”), multiword phrases (“CLI coding agents”), acronyms, domain entities, product/feature names, CLI subcommands, environment variable keys, major class/component names, and public API route names. Exclude generic words (“server”, “request”, “user”) unless they are branded or uniquely significant in this repo.
+Why this matters: these terms will be passed to an STT engine as biasing vocabulary.
+Include exact casing (e.g., "Claude Code", "Codeverse", "WebSocket", "gRPC", "Next.js",
+"OpenAI"), multiword phrases ("CLI coding agents"), acronyms, domain entities,
+product/feature names, CLI subcommands, environment variable keys, major class/component
+names, and public API route names. Exclude generic words ("server", "request", "user")
+unless they are branded or uniquely significant in this repo.
 
 INPUTS (provided by the caller; if omitted, infer by reading the workspace):
 {repo_hint_section}- max_files: integer cap for relevant_files (default {max_files}).
@@ -296,31 +311,47 @@ INPUTS (provided by the caller; if omitted, infer by reading the workspace):
 
 SELECTION HEURISTICS
 Relevant files (root-focused):
-- Python: files containing `if __name__ == "__main__"`; `main.py`, `app.py`, `serve.py`; entry points from `pyproject.toml [project.scripts]` or `setup.cfg`/`setup.py`; `manage.py` (Django).
-- Node/TS: `package.json` fields `"main"`, `"bin"`, `"exports"`, and scripts like `"start"`, `"dev"`; root `index.(js|ts)`, `server.(js|ts)`, `next.config.js` (Next.js uses `app/` or `pages/` for app entry, but root scripts may launch it).
+- Python: files containing `if __name__ == "__main__"`; `main.py`, `app.py`, `serve.py`;
+  entry points from `pyproject.toml [project.scripts]` or `setup.cfg`/`setup.py`;
+  `manage.py` (Django).
+- Node/TS: `package.json` fields `"main"`, `"bin"`, `"exports"`, and scripts like
+  `"start"`, `"dev"`; root `index.(js|ts)`, `server.(js|ts)`, `next.config.js` (Next.js uses
+  `app/` or `pages/` for app entry, but root scripts may launch it).
 - Go: `cmd/<app>/main.go` (treat as root entry if present), or root `main.go`.
 - Rust: `src/main.rs`.
 - Java/Kotlin: root build files; main launcher classes; Spring Boot `@SpringBootApplication`.
 - C#: `Program.cs`.
 - Ruby: `bin/*`, `config.ru`.
-- Framework launchers and CLIs: anything referenced by Procfile, Dockerfile `CMD/ENTRYPOINT`, Makefile primary targets, `justfile` default, `bazel`/`pants` top targets.
+- Framework launchers and CLIs: anything referenced by Procfile, Dockerfile
+  `CMD/ENTRYPOINT`, Makefile primary targets, `justfile` default, `bazel`/`pants` top targets.
 Exclude: tests, examples, docs, migrations, vendored deps, build artifacts, lockfiles, images.
 
 Relevant terms (keep signal high):
 - Product/project names, app names, codenames.
 - Feature flags, core domain nouns (e.g., “plan canvas”, “agent runner”).
-- CLI names and subcommands (`codeverse plan`, `codeverse run --repo`).
-- Prominent library/framework names actually used (e.g., “Windsurf”, “Cursor”, “FastAPI”, “Next.js”, “Playwright”), major protocol names (“WebRTC”, “SSE”, “gRPC”).
-- Public API routes (`/api/plan`, `/v1/agents/run`), event types, queue/topic names.
-- Environment variable keys (`CODEVERSE_API_KEY`, `OPENAI_MODEL`), config keys, dataset/model names.
-- Filenames (without paths) that are often referenced in docs/issues (`process_events.py`, `main.py`).
+- CLI names and subcommands (`codeverse plan`,
+  `codeverse run --repo`).
+- Prominent library/framework names actually used (e.g., "Windsurf", "Cursor", "FastAPI",
+  "Next.js", "Playwright"), major protocol names ("WebRTC", "SSE", "gRPC").
+- Public API routes (`/api/plan`, `/v1/agents/run`), event types,
+  queue/topic names.
+- Environment variable keys (`CODEVERSE_API_KEY`, `OPENAI_MODEL`), config keys,
+  dataset/model names.
+- Filenames (without paths) that are often referenced in docs/issues
+  (`process_events.py`, `main.py`).
 Deduplicate, preserve exact casing, keep multiword phrases intact. Prefer specificity over volume.
 
 PROCEDURE
-1) Read: repository tree, README, package/build files, Dockerfile/Procfile/Makefile/justfile, primary app files in root, and configs that declare entry points.
-2) Identify root-level main files using the heuristics above. Keep to max_files by importance.
-3) Collect candidate terms from names, configs, README, code identifiers/components, CLI definitions, env/config keys, and any provided optional_repo_hint. Filter to the most salient (frequency + centrality), keep to max_terms.
-4) Sort relevant_files by likely launch order/importance; sort relevant_terms by importance (most important first).
+1) Read: repository tree, README, package/build files,
+Dockerfile/Procfile/Makefile/justfile, primary app files in root, and configs that declare
+entry points.
+2) Identify root-level main files using the heuristics above. Keep to max_files by
+importance.
+3) Collect candidate terms from names, configs, README, code identifiers/components,
+CLI definitions, env/config keys, and any provided optional_repo_hint. Filter to the most
+salient (frequency + centrality), keep to max_terms.
+4) Sort relevant_files by likely launch order/importance; sort relevant_terms by
+importance (most important first).
 5) Output strict JSON only. No comments, no trailing commas, no explanations.
 
 OUTPUT SCHEMA (STRICT):
@@ -331,12 +362,15 @@ OUTPUT SCHEMA (STRICT):
 
 VALIDATION
 - Always return both keys, even if arrays are empty.
-- Paths in relevant_files should be **root-relative filenames** (e.g., "main.py"). Only include a subpath if conventional (e.g., "cmd/api/main.go", "bin/cli").
+- Paths in relevant_files should be **root-relative filenames** (e.g., "main.py").
+  Only include a subpath if conventional (e.g., "cmd/api/main.go", "bin/cli").
 - Ensure JSON parses.
 
 NOW DO THIS
-- Use max_files = {max_files} and max_terms = {max_terms} unless the caller overrides.
-- If you find strong hints of these terms, include them (case-preserved): ["Codeverse", "Claude Code", "CLI coding agents"].
+- Use max_files = {max_files} and max_terms = {max_terms} unless the caller
+  overrides.
+- If you find strong hints of these terms, include them (case-preserved):
+  ["Codeverse", "Claude Code", "CLI coding agents"].
 - Return only the JSON object.
 """
 
@@ -368,7 +402,6 @@ async def get_relevant_vocabulary(
     raw_output = "".join(collected).strip()
 
     # Try to parse JSON strictly; if extra text sneaks in, attempt to extract the first JSON object
-    parsed: Dict[str, List[str]]
     try:
         parsed_json = json.loads(raw_output)
     except Exception:
@@ -489,7 +522,8 @@ def _build_user_notes_from_context(plan_context: Dict[str, object]) -> Tuple[str
             f"**User:** {user_message}",
             "",
             "## Instructions",
-            "Provide a structured implementation plan. Follow the formatting instructions at the top of the system prompt.",
+            "Provide a structured implementation plan. Follow the formatting instructions"
+            " at the top of the system prompt.",
         ]
     )
 

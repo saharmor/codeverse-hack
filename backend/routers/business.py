@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from models import ChatSession, Plan, PlanArtifact, Repository
+from models import ChatSession, Plan, PlanVersion, Repository
 
 # ChatMessage schema available if needed for future use
 from services.claude_service import generate_plan_business
@@ -51,7 +51,7 @@ async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any], db:
     if artifact_override:
         existing_artifact = artifact_override
     else:
-        result = await db.execute(select(PlanArtifact).where(PlanArtifact.plan_id == plan_id))
+        result = await db.execute(select(PlanVersion).where(PlanVersion.plan_id == plan_id))
         artifact = result.scalar_one_or_none()
         if artifact:
             existing_artifact = artifact.content
