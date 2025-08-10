@@ -10,7 +10,7 @@ from database import get_db
 from models import ChatSession, Plan, PlanArtifact, Repository
 
 # ChatMessage schema available if needed for future use
-from services.claude_service import generate_plan_business
+from services.claude_service import generate_plan_business, _query_claude_stream
 
 router = APIRouter(prefix="/api/business", tags=["business-logic"])
 
@@ -76,9 +76,51 @@ async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any], db:
         "user_message": user_message,
     }
 
+    # Generate dynamic plan name if needed
+    should_update_name = (
+        plan.name in ["New Plan", ""] or
+        plan.name is None or
+        user_message.strip().lower().startswith(("create", "build", "implement", "add", "develop"))
+    )
+    
     # Stream the response from Claude
     async def stream_response():
         try:
+            # Optionally generate and send updated plan name first
+            if should_update_name:
+                try:
+                    name_prompt = f"""
+Based on this user request: "{user_message}"
+And repository: {repository.name} at {repository.path}
+
+Generate a concise, descriptive name (2-4 words) for this development plan.
+Examples: "User Authentication", "Chat Integration", "API Dashboard"
+
+Respond with only the name, no quotes or extra text.
+"""
+                    name_chunks = []
+                    async for chunk in _query_claude_stream(
+                        working_directory=repository.path,
+                        system_prompt=None,
+                        prompt=name_prompt,
+                    ):
+                        if chunk:
+                            name_chunks.append(chunk)
+                    
+                    new_name = "".join(name_chunks).strip()
+                    if new_name and new_name != plan.name:
+                        # Update plan name in database
+                        plan.name = new_name
+                        await db.commit()
+                        await db.refresh(plan)
+                        
+                        # Send name update to client
+                        yield f"data: {json.dumps({'type': 'name_update', 'name': new_name})}\n\n"
+                        
+                except Exception as e:
+                    print(f"Error generating dynamic plan name: {e}")
+                    # Continue with plan generation even if name generation fails
+
             async for chunk in generate_plan_business(plan_context):
                 # Send each chunk as JSON
                 yield f"data: {json.dumps({'type': 'chunk', 'content': chunk})}\n\n"
