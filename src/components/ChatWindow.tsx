@@ -16,7 +16,7 @@ function Avatar({ role }: { role: 'user' | 'assistant' }) {
 }
 
 export default function ChatWindow() {
-  const { chatMessages, sendMessage, plans, selectedPlanId, isLoading } = useAppContext()
+  const { chatMessages, generatePlan, plans, selectedPlanId, isLoading } = useAppContext()
   const [input, setInput] = useState('')
   const [voiceBusy, setVoiceBusy] = useState(false)
   const scrollRef = useRef<HTMLDivElement | null>(null)
@@ -41,7 +41,7 @@ export default function ChatWindow() {
 
   const handleSend = () => {
     if (!input.trim()) return
-    sendMessage(input)
+    generatePlan(input)
     setInput('')
   }
 
