@@ -98,20 +98,16 @@ async def _query_claude_stream(
     ]
 
     current_path = os.environ.get("PATH", "")
-    path_updated = False
 
     for claude_path in claude_paths:
         if os.path.exists(claude_path) and claude_path not in current_path:
             os.environ["PATH"] = f"{claude_path}:{current_path}"
             current_path = os.environ["PATH"]  # Update for next iteration
-            path_updated = True
 
     # Also check if CLAUDE_CLI_PATH environment variable is set
     custom_claude_path = os.environ.get("CLAUDE_CLI_PATH")
     if custom_claude_path and os.path.exists(custom_claude_path) and custom_claude_path not in current_path:
         os.environ["PATH"] = f"{custom_claude_path}:{current_path}"
-        path_updated = True
-
     saw_any_delta = False
     async for message in query(
         prompt=prompt,
