@@ -231,4 +231,4 @@ export default function VoiceRecorder({ onAccept, onCancel, autoStart = false, i
       )}
     </div>
   )
-} 
+}
