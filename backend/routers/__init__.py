@@ -1,9 +1,9 @@
-from . import artifacts, business, chat, plans, repositories, transcribe  # noqa: F401
+from . import business, chat, plan_versions, plans, repositories, transcribe  # noqa: F401
 
 __all__ = [
     "repositories",
     "plans",
-    "artifacts",
+    "plan_versions",
     "chat",
     "business",
     "transcribe",

@@ -32,18 +32,18 @@ async def generate_dynamic_plan_name(repository_path: str, description: str) -> 
     prompt = f"""
 Based on the repository at {repository_path} and this description: "{description}"
 
-Generate a concise, descriptive name (2-4 words) for this development plan. 
+Generate a concise, descriptive name (2-4 words) for this development plan.
 The name should capture the core feature or component being planned.
 
 Examples:
 - "User Authentication System"
 - "Real-time Chat Feature"
-- "Payment Gateway Integration" 
+- "Payment Gateway Integration"
 - "Dashboard Analytics Panel"
 
 Respond with only the name, no quotes or extra text.
 """
-    
+
     try:
         chunks = []
         async for chunk in _query_claude_stream(
@@ -53,7 +53,7 @@ Respond with only the name, no quotes or extra text.
         ):
             if chunk:
                 chunks.append(chunk)
-        
+
         generated_name = "".join(chunks).strip()
         # Fallback if generation fails
         return generated_name if generated_name else "New Feature Plan"
@@ -74,11 +74,11 @@ async def create_plan(repo_id: str, plan_data: PlanCreate, db: AsyncSession = De
     if plan_dict.get("name") in ["New Plan", "", None] or not plan_dict.get("name"):
         description = plan_dict.get("description", "")
         if description:  # Only generate name if there's a description
-            dynamic_name = await generate_dynamic_plan_name(repository.path, description)
+            dynamic_name = await generate_dynamic_plan_name(str(repository.path), description)
             plan_dict["name"] = dynamic_name
         else:
             plan_dict["name"] = "New Plan"  # Fallback name
-    
+
     plan_dict["repository_id"] = repo_id
     plan = Plan(**plan_dict)
     db.add(plan)

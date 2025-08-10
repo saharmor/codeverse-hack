@@ -23,10 +23,10 @@ except Exception:  # pragma: no cover
 
 # Import prompt generation utilities
 from .claude_prompts import (
-    ClaudeOutputManager,
-    ClaudeOutputType,
     SYSTEM_PROMPT,
     SYSTEM_PROMPT_NON_FIRST_ITERATION,
+    ClaudeOutputManager,
+    ClaudeOutputType,
     build_vocab_prompt,
 )
 
@@ -152,7 +152,7 @@ async def generate_plan(
             # Initialize current section when first header appears
             if current_type is None:
                 candidates = []
-                
+
                 # Check for all possible section headers
                 for section in om.get_all_sections():
                     idx = buffer.find(section.header)
@@ -186,17 +186,17 @@ async def generate_plan(
                     if idx != -1:
                         output_type = ClaudeOutputType(section.name)
                         next_candidates.append((idx, output_type))
-            
+
             if next_candidates:
                 # Found a boundary to another section
                 next_candidates.sort(key=lambda x: x[0])
                 next_idx, next_type = next_candidates[0]
-                
+
                 # Emit the current section content
                 current_part = buffer[:next_idx]
                 if current_part:
                     yield (current_type, current_part)
-                
+
                 # Move to next section
                 buffer = buffer[next_idx:]
                 current_type = next_type
@@ -213,9 +213,6 @@ async def generate_plan(
     # End of stream: flush anything remaining in buffer
     if buffer and current_type is not None:
         yield (current_type, buffer)
-
-
-
 
 
 async def get_relevant_vocabulary(
@@ -245,7 +242,6 @@ async def get_relevant_vocabulary(
     raw_output = "".join(collected).strip()
 
     # Try to parse JSON strictly; if extra text sneaks in, attempt to extract the first JSON object
-    parsed: Dict[str, List[str]]
     try:
         parsed_json = json.loads(raw_output)
     except Exception:
@@ -325,7 +321,15 @@ def _build_user_notes_from_context(plan_context: Dict[str, object]) -> Tuple[str
     prev_questions_text: Optional[str] = None
     if isinstance(existing_artifact, dict):
         try:
-            parts.extend(["## Current Plan Artifact", "```json", json.dumps(existing_artifact, indent=2), "```", ""])
+            parts.extend(
+                [
+                    "## Current Plan Artifact",
+                    "```json",
+                    json.dumps(existing_artifact, indent=2),
+                    "```",
+                    "",
+                ]
+            )
         except Exception:
             pass
         # Try extracting structured fields if present
@@ -366,7 +370,8 @@ def _build_user_notes_from_context(plan_context: Dict[str, object]) -> Tuple[str
             f"**User:** {user_message}",
             "",
             "## Instructions",
-            "Provide a structured implementation plan. Follow the formatting instructions at the top of the system prompt.",
+            "Provide a structured implementation plan. Follow the formatting instructions"
+            " at the top of the system prompt.",
         ]
     )
 

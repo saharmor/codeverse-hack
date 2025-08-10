@@ -13,6 +13,7 @@ from typing import List, Optional
 @dataclass(frozen=True)
 class OutputSection:
     """Represents a Claude output section with its metadata."""
+
     name: str
     header: str
     description: str
@@ -21,44 +22,37 @@ class OutputSection:
 
 class ClaudeOutputManager:
     """Manages Claude output types and their associated metadata."""
-    
+
     # Define all output sections
     PLAN_NAME = OutputSection(
         name="plan_name",
         header="# Plan name",
         description="A concise, descriptive name for the implementation plan",
-        order=1
+        order=1,
     )
-    
+
     PLAN = OutputSection(
-        name="plan",
-        header="# Plan draft",
-        description="The detailed implementation plan content",
-        order=2
+        name="plan", header="# Plan draft", description="The detailed implementation plan content", order=2
     )
-    
+
     CLARIFY_QUESTIONS = OutputSection(
         name="clarify_questions",
         header="# Clarifying questions",
         description="Questions to clarify missing information",
-        order=3
+        order=3,
     )
-    
+
     @classmethod
     def get_all_sections(cls) -> List[OutputSection]:
         """Get all output sections sorted by order."""
-        return sorted([
-            cls.PLAN_NAME,
-            cls.PLAN,
-            cls.CLARIFY_QUESTIONS
-        ], key=lambda x: x.order)
-    
+        return sorted([cls.PLAN_NAME, cls.PLAN, cls.CLARIFY_QUESTIONS], key=lambda x: x.order)
+
     @classmethod
     def get_section_by_name(cls, name: str) -> Optional[OutputSection]:
         """Get output section by name."""
         sections = {s.name: s for s in cls.get_all_sections()}
         return sections.get(name)
-    
+
     @classmethod
     def get_section_by_header(cls, header: str) -> Optional[OutputSection]:
         """Get output section by header text."""
@@ -66,7 +60,7 @@ class ClaudeOutputManager:
             if section.header == header:
                 return section
         return None
-    
+
     @classmethod
     def get_max_header_length(cls) -> int:
         """Get the maximum length of all headers for buffer management."""
@@ -75,6 +69,7 @@ class ClaudeOutputManager:
 
 class ClaudeOutputType(str, Enum):
     """Output type enum that corresponds to section names."""
+
     PLAN_NAME = ClaudeOutputManager.PLAN_NAME.name
     PLAN = ClaudeOutputManager.PLAN.name
     CLARIFY_QUESTIONS = ClaudeOutputManager.CLARIFY_QUESTIONS.name
@@ -110,7 +105,7 @@ def _get_clarifying_guidelines(is_first_iteration: bool) -> str:
 def build_system_prompt(is_first_iteration: bool = True) -> str:
     """Build system prompt using the output manager structure."""
     om = ClaudeOutputManager
-    
+
     if is_first_iteration:
         base_description = "Given the user's raw notes below, produce the output using the following strict format:"
         iteration_context = ""
@@ -122,19 +117,23 @@ You will be provided with:
 1. **Previous Plan Draft** - The current plan that needs review
 2. **Previous Clarifying Questions** - Questions that were asked before
 3. **User Raw Notes** - Additional context, answers, or modifications from the user"""
-    
+
     # Prepare strings that contain backslashes outside of f-string
     plan_name_guidelines = "Plan name guidelines:\\n- Suggest a clear"
-    
-    plan_content_type = 'Plan' if is_first_iteration else 'Updated plan'
-    clarifying_type = 'Clarifying' if is_first_iteration else 'Updated clarifying'
-    
-    concise_or_refined = 'concise' if is_first_iteration else 'refined'
-    plan_or_updated = 'plan' if is_first_iteration else 'updated plan'
-    ending_period = '.' if is_first_iteration else ' with the remaining/open questions only.'
-    plan_characteristics_ending = '.' if is_first_iteration else ' of the refined plan.'
-    example_name = 'Smart Developer Task Management Platform' if is_first_iteration else 'CodeVerse - AI-Powered Development Platform'
-    
+
+    plan_content_type = "Plan" if is_first_iteration else "Updated plan"
+    clarifying_type = "Clarifying" if is_first_iteration else "Updated clarifying"
+
+    concise_or_refined = "concise" if is_first_iteration else "refined"
+    plan_or_updated = "plan" if is_first_iteration else "updated plan"
+    ending_period = "." if is_first_iteration else " with the remaining/open questions only."
+    plan_characteristics_ending = "." if is_first_iteration else " of the refined plan."
+    example_name = (
+        "Smart Developer Task Management Platform"
+        if is_first_iteration
+        else "CodeVerse - AI-Powered Development Platform"
+    )
+
     return f"""
 You are **Claude Code**, an AI agent assistant specialized in helping developers draft high-quality implementation plans. {base_description}{iteration_context}
 
@@ -154,7 +153,7 @@ Formatting requirements (critical):
   ```
   {om.PLAN_NAME.header}
   {example_name}
-  
+
   {om.PLAN.header}
   [{plan_or_updated} content here]
   ```

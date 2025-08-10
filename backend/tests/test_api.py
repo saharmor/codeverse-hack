@@ -41,7 +41,7 @@ def test_api_endpoints():
     else:
         print(f"❌ Repository creation failed: {response.status_code}")
         print(response.text)
-        pytest.fail(f"Request failed")
+        pytest.fail("Request failed")
 
     # Get all repositories
     print("\n3. Testing get repositories...")
@@ -52,7 +52,7 @@ def test_api_endpoints():
         print(f"Found {len(repos)} repositories")
     else:
         print(f"❌ Get repositories failed: {response.status_code}")
-        pytest.fail(f"Request failed")
+        pytest.fail("Request failed")
 
     # Create plan
     print("\n4. Testing plan creation...")
@@ -74,7 +74,7 @@ def test_api_endpoints():
     else:
         print(f"❌ Plan creation failed: {response.status_code}")
         print(response.text)
-        pytest.fail(f"Request failed")
+        pytest.fail("Request failed")
 
     # Get plans for repository
     print("\n5. Testing get plans for repository...")
@@ -85,7 +85,7 @@ def test_api_endpoints():
         print(f"Found {len(plans)} plans for repository")
     else:
         print(f"❌ Get plans failed: {response.status_code}")
-        pytest.fail(f"Request failed")
+        pytest.fail("Request failed")
 
     # Create plan artifact
     print("\n6. Testing plan artifact creation...")
@@ -114,7 +114,7 @@ def test_api_endpoints():
     else:
         print(f"❌ Plan artifact creation failed: {response.status_code}")
         print(response.text)
-        pytest.fail(f"Request failed")
+        pytest.fail("Request failed")
 
     # Create chat session
     print("\n7. Testing chat session creation...")
@@ -139,7 +139,7 @@ def test_api_endpoints():
     else:
         print(f"❌ Chat session creation failed: {response.status_code}")
         print(response.text)
-        pytest.fail(f"Request failed")
+        pytest.fail("Request failed")
 
     print("\n🎉 All API tests passed successfully!")
     print(

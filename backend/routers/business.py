@@ -7,10 +7,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database import get_db
-from models import ChatSession, Plan, PlanArtifact, Repository
+from models import ChatSession, Plan, PlanVersion, Repository
 
 # ChatMessage schema available if needed for future use
-from services.claude_service import generate_plan_business, _query_claude_stream
+from services.claude_service import _query_claude_stream, generate_plan_business
 
 router = APIRouter(prefix="/api/business", tags=["business-logic"])
 
@@ -51,7 +51,7 @@ async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any], db:
     if artifact_override:
         existing_artifact = artifact_override
     else:
-        result = await db.execute(select(PlanArtifact).where(PlanArtifact.plan_id == plan_id))
+        result = await db.execute(select(PlanVersion).where(PlanVersion.plan_id == plan_id))
         artifact = result.scalar_one_or_none()
         if artifact:
             existing_artifact = artifact.content
@@ -78,11 +78,11 @@ async def generate_plan_endpoint(plan_id: str, request_data: Dict[str, Any], db:
 
     # Generate dynamic plan name if needed
     should_update_name = (
-        plan.name in ["New Plan", ""] or
-        plan.name is None or
-        user_message.strip().lower().startswith(("create", "build", "implement", "add", "develop"))
+        plan.name in ["New Plan", ""]
+        or plan.name is None
+        or user_message.strip().lower().startswith(("create", "build", "implement", "add", "develop"))
     )
-    
+
     # Stream the response from Claude
     async def stream_response():
         try:
@@ -106,17 +106,17 @@ Respond with only the name, no quotes or extra text.
                     ):
                         if chunk:
                             name_chunks.append(chunk)
-                    
+
                     new_name = "".join(name_chunks).strip()
                     if new_name and new_name != plan.name:
                         # Update plan name in database
                         plan.name = new_name
                         await db.commit()
                         await db.refresh(plan)
-                        
+
                         # Send name update to client
                         yield f"data: {json.dumps({'type': 'name_update', 'name': new_name})}\n\n"
-                        
+
                 except Exception as e:
                     print(f"Error generating dynamic plan name: {e}")
                     # Continue with plan generation even if name generation fails

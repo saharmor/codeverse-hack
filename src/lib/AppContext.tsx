@@ -191,7 +191,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
   }, [selectedRepositoryId])
 
   const updatePlanName = useCallback((planId: string, newName: string) => {
-    setPlans(prev => prev.map(plan => 
+    setPlans(prev => prev.map(plan =>
       plan.id === planId ? { ...plan, name: newName } : plan
     ))
   }, [])

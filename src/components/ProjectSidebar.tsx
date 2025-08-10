@@ -43,8 +43,8 @@ export default function ProjectSidebar() {
   const handleAddRepository = useCallback(async () => {
     try {
       const { open } = await import('@tauri-apps/api/dialog')
-      const res = await open({ 
-        directory: true, 
+      const res = await open({
+        directory: true,
         multiple: false,
         title: 'Select Repository Folder',
         defaultPath: '~/Documents'
@@ -134,14 +134,14 @@ export default function ProjectSidebar() {
       <Modal open={planModalOpen} title="New Plan" onClose={() => setPlanModalOpen(false)}
         footer={(
           <>
-            <button 
-              onClick={() => setPlanModalOpen(false)} 
+            <button
+              onClick={() => setPlanModalOpen(false)}
               className="px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white hover:bg-gray-50 text-gray-700"
             >
               Cancel
             </button>
-            <button 
-              onClick={(e) => { (document.getElementById('plan-form') as HTMLFormElement)?.requestSubmit() }} 
+            <button
+              onClick={(e) => { (document.getElementById('plan-form') as HTMLFormElement)?.requestSubmit() }}
               className="px-3 py-2 text-sm rounded-lg bg-purple-600 hover:bg-purple-700 text-white"
             >
               Create
@@ -150,12 +150,12 @@ export default function ProjectSidebar() {
         )}
       >
         <form id="plan-form" onSubmit={onSubmitPlan}>
-          <input 
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500" 
-            value={planName} 
-            onChange={(e) => setPlanName(e.target.value)} 
+          <input
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm placeholder-gray-400 focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+            value={planName}
+            onChange={(e) => setPlanName(e.target.value)}
             placeholder="Plan name"
-            required 
+            required
             autoFocus
           />
         </form>
