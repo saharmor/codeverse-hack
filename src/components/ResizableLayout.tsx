@@ -7,12 +7,12 @@ import TaskOutputPanel from './TaskOutputPanel'
 
 const MIN_LEFT = 48
 const MAX_LEFT = 320
-const MIN_RIGHT = 200
-const MAX_RIGHT = 520
+const MIN_RIGHT = 300
+const MAX_RIGHT = 600
 
 export default function ResizableLayout() {
   const [leftWidth, setLeftWidth] = useState<number>(200)
-  const [rightWidth, setRightWidth] = useState<number>(272)
+  const [rightWidth, setRightWidth] = useState<number>(400)
   const [dragging, setDragging] = useState<'left' | 'right' | null>(null)
   const startXRef = useRef<number>(0)
   const startLeftRef = useRef<number>(leftWidth)

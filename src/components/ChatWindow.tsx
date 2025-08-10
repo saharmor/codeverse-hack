@@ -4,6 +4,7 @@ import React, { useMemo, useRef, useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, RefreshCw, Send, Mic } from 'lucide-react'
 import { useAppContext } from '../lib/AppContext'
 import VoiceRecorder from './VoiceRecorder'
+import LoadingAnimation from './LoadingAnimation'
 import { transcribeAudio } from '../lib/transcription'
 
 function Avatar({ role }: { role: 'user' | 'assistant' }) {
@@ -15,7 +16,7 @@ function Avatar({ role }: { role: 'user' | 'assistant' }) {
 }
 
 export default function ChatWindow() {
-  const { chatMessages, sendMessage, generatePlan, plans, selectedPlanId } = useAppContext()
+  const { chatMessages, sendMessage, generatePlan, plans, selectedPlanId, isLoading } = useAppContext()
   const [input, setInput] = useState('')
   const [voiceBusy, setVoiceBusy] = useState(false)
   const [inlineRecording, setInlineRecording] = useState(false)
@@ -34,6 +35,12 @@ export default function ChatWindow() {
     // Use generatePlan instead of sendMessage for plan generation
     generatePlan(input)
     setInput('')
+  }
+
+  // Test function to demonstrate loading animation
+  const testLoading = () => {
+    // Simulate loading state for demo purposes
+    // In real usage, this would be handled by the generatePlan function
   }
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -85,6 +92,7 @@ export default function ChatWindow() {
             {m.role === 'user' && <Avatar role="user" />}
           </div>
         ))}
+        <LoadingAnimation isVisible={isLoading} />
       </div>
 
       {/* Footer */}

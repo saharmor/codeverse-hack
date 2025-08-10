@@ -24,6 +24,7 @@ interface AppContextValue {
   chatMessages: ChatMessage[]
   sendMessage: (content: string) => Promise<void>
   generatePlan: (message: string) => Promise<void>
+  isLoading: boolean
 
   // artifacts
   artifacts: PlanArtifact[]
@@ -40,6 +41,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
 
   const [chatSession, setChatSession] = useState<ChatSession | null>(null)
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [isLoading, setIsLoading] = useState(false)
 
   const [artifacts, setArtifacts] = useState<PlanArtifact[]>([])
 
@@ -227,6 +229,8 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     const trimmed = message.trim()
     if (!trimmed) return
 
+    setIsLoading(true)
+
     // Add user message to chat
     const userMsg: ChatMessage = { id: `m${Date.now()}`, role: 'user', content: trimmed, timestamp: Date.now() }
     setChatMessages(prev => [...prev, userMsg])
@@ -281,10 +285,12 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
           content: 'Sorry, there was an error generating the plan. Please try again.',
           timestamp: Date.now()
         }])
+        setIsLoading(false)
       },
       // onComplete callback
       () => {
         console.log('Plan generation completed')
+        setIsLoading(false)
       }
     )
 
@@ -307,8 +313,9 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     chatMessages,
     sendMessage,
     generatePlan,
+    isLoading,
     artifacts,
-  }), [repositories, selectedRepositoryId, selectRepository, createRepository, deleteRepository, plans, selectedPlanId, selectPlan, createPlan, deletePlan, updatePlanName, chatMessages, sendMessage, generatePlan, artifacts])
+  }), [repositories, selectedRepositoryId, selectRepository, createRepository, deleteRepository, plans, selectedPlanId, selectPlan, createPlan, deletePlan, updatePlanName, chatMessages, sendMessage, generatePlan, isLoading, artifacts])
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>
 }
