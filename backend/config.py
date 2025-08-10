@@ -27,8 +27,8 @@ class Settings:
     if os.getenv("CORS_ORIGINS"):
         CORS_ORIGINS.extend(os.getenv("CORS_ORIGINS", "").split(","))
     
-    # Database Configuration (for future use)
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./app.db")
+    # Database Configuration
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///./codeverse.db")
     DATABASE_ECHO: bool = os.getenv("DATABASE_ECHO", "false").lower() == "true"
     
     # Security Configuration (for future use)
