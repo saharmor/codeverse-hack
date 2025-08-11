@@ -91,7 +91,7 @@ backend/*.tmp
 backend/*.temp
 
 # IDE
-.vscode/
+# .vscode/
 .idea/
 *.swp
 *.swo

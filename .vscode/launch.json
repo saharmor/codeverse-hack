@@ -1,0 +1,53 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Python: Debug claude_script.py",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/claude_script.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}",
+        "ANTHROPIC_API_KEY": "PUTHERE"
+      },
+      "python": "${workspaceFolder}/backend/.venv/bin/python",
+      "args": []
+    },
+    {
+      "name": "FastAPI: Debug Backend Server",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/backend/run.py",
+      "console": "integratedTerminal",
+      "justMyCode": false,
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/backend",
+
+      },
+      "python": "${workspaceFolder}/backend/.venv/bin/python",
+      "args": [],
+      "django": false,
+      "autoReload": {
+        "enable": true
+      }
+    },
+    {
+      "name": "Python: Debug API Test Script", 
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/test_api_endpoint.py",
+      "console": "integratedTerminal",
+      "justMyCode": true,
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      },
+      "python": "${workspaceFolder}/backend/.venv/bin/python",
+      "args": []
+    }
+  ]
+}
+
+
