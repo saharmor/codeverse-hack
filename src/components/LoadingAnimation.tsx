@@ -14,7 +14,7 @@ interface LoadingAnimationProps {
 }
 
 const loadingMessages = [
-  "Deploying agents...",
+  "Running Claude Code...",
   "Reading repository context...",
   "Analyzing code structure...",
   "Generating implementation plan...",
