@@ -1,64 +1,28 @@
-# Tauri + Next.js + FastAPI Boilerplate
+# CodeVerse
 
-A modern desktop application boilerplate that combines:
+A desktop application that transforms how developers plan and execute code projects through intelligent AI assistance and natural voice interaction.
 
-- **Tauri** - For native desktop functionality
-- **Next.js** - For the frontend UI
-- **FastAPI** - For the Python backend API
+Video here https://drive.google.com/drive/folders/13URKjQBmcLB1vFVDTHrCpZPUVxgit66U?usp=sharing
 
-## 🚀 Features
+## What is CodeVerse?
 
-- **Desktop App**: Native desktop application with Tauri
-- **Modern UI**: Beautiful interface built with Next.js and Tailwind CSS
-- **Python Backend**: Powerful API with FastAPI
-- **Type Safety**: Full TypeScript support
-- **Hot Reload**: Development with hot reload for both frontend and backend
-- **Cross-platform**: Works on Windows, macOS, and Linux
+CodeVerse is an AI-powered development companion that helps you break down complex coding projects into actionable plans. Simply describe your project goals through text or voice, and CodeVerse generates comprehensive development plans while providing an interactive chat interface to refine your approach.
 
-## 📋 Prerequisites
+**Key Features:**
+- AI-powered project planning with Claude integration
+- Voice-to-text input for hands-free planning
+- Interactive chat interface for plan refinement
+- Repository and plan version management
+- Clean, resizable three-panel desktop interface
 
-Before you begin, ensure you have the following installed:
+## Prerequisites
 
 - **Node.js** (v18 or later)
-- **Python** (v3.8 or later)
+- **Python** (v3.8 or later) 
 - **Rust** (latest stable version)
-- **Cargo** (comes with Rust)
+- **Claude CLI** - Install from [Claude AI](https://claude.ai/chat)
 
-### Installing Prerequisites
-
-#### 1. Install Node.js
-
-```bash
-# Using nvm (recommended)
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-nvm install node
-nvm use node
-
-# Or download from https://nodejs.org/
-```
-
-#### 2. Install Python
-
-```bash
-# macOS
-brew install python
-
-# Ubuntu/Debian
-sudo apt update
-sudo apt install python3 python3-pip
-
-# Windows
-# Download from https://python.org/
-```
-
-#### 3. Install Rust
-
-```bash
-curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-source ~/.cargo/env
-```
-
-## 🛠️ Setup Instructions
+## Installation
 
 ### 1. Clone and Install Dependencies
 
@@ -66,10 +30,10 @@ source ~/.cargo/env
 # Install frontend dependencies
 npm install
 
-# Install Tauri CLI globally
+# Install Tauri CLI
 npm install -g @tauri-apps/cli
 
-# Create Python virtual environment
+# Set up Python backend
 cd backend
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
@@ -77,188 +41,96 @@ pip install -r requirements.txt
 cd ..
 ```
 
-### 2. Start the Backend
+### 2. Configure Environment
+
+Copy `env.example` to `.env` and configure your settings:
 
 ```bash
-# Start FastAPI backend
+cp env.example .env
+```
+
+Add your API keys:
+- OpenAI API key for transcription (optional)
+- Claude API access via Claude CLI
+
+### 3. Initialize Database
+
+```bash
 cd backend
+source .venv/bin/activate
+python setup_db.py
+cd ..
+```
+
+## Running the Application
+
+### Start All Services
+
+```bash
+# Terminal 1: Start the backend API
+cd backend
+source .venv/bin/activate
 python run.py
-# Or: uvicorn main:app --reload --host 0.0.0.0 --port 8000
-```
 
-The backend will be available at `http://localhost:8000`
-
-### 3. Start the Frontend
-
-```bash
-# In a new terminal, start Next.js frontend
-npm run dev
-```
-
-The frontend will be available at `http://localhost:3000`
-
-### 4. Run the Desktop App
-
-```bash
-# In a new terminal, run Tauri development
+# Terminal 2: Start the desktop application
 npm run tauri:dev
 ```
 
-This will build and launch the desktop application.
+The backend runs on `http://localhost:8000` and the desktop app will launch automatically.
 
-## 📁 Project Structure
+## Usage
 
-```
-├── src/                    # Next.js frontend source
-│   ├── app/               # Next.js app directory
-│   │   ├── globals.css    # Global styles
-│   │   ├── layout.tsx     # Root layout
-│   │   └── page.tsx       # Main page
-│   └── components/        # React components
-├── src-tauri/             # Tauri backend (Rust)
-│   ├── src/               # Rust source code
-│   ├── Cargo.toml         # Rust dependencies
-│   ├── build.rs           # Build configuration
-│   └── tauri.conf.json    # Tauri configuration
-├── backend/                # Python FastAPI backend
-│   ├── main.py            # FastAPI application
-│   ├── run.py             # Run script
-│   └── requirements.txt   # Python dependencies
-├── package.json            # Node.js dependencies
-├── next.config.js          # Next.js configuration
-├── tailwind.config.js      # Tailwind CSS configuration
-└── README.md               # This file
-```
+1. **Create a Repository**: Add your project directory to start planning
+2. **Voice or Text Input**: Describe your coding goals using the microphone or text input
+3. **Review AI Plans**: CodeVerse generates structured development plans
+4. **Interactive Refinement**: Use the chat interface to ask questions and refine plans
+5. **Track Progress**: Manage multiple plan versions as your project evolves
 
-## 🔧 Development
+## Architecture
 
-### Frontend Development
+**Frontend**: Next.js with TypeScript and Tailwind CSS
+**Backend**: FastAPI with SQLAlchemy
+**Desktop**: Tauri for native desktop integration
+**AI**: Claude Code SDK for intelligent planning
+**Database**: SQLite for local data storage
 
-- **Next.js**: Modern React framework with app router
-- **TypeScript**: Full type safety
-- **Tailwind CSS**: Utility-first CSS framework
-- **Tauri API**: Native desktop integration
+## Development
 
-### Backend Development
-
-- **FastAPI**: Modern Python web framework
-- **Pydantic**: Data validation
-- **CORS**: Cross-origin resource sharing enabled
-- **Hot Reload**: Automatic server restart on code changes
-
-### Desktop Integration
-
-- **Tauri Commands**: Custom Rust functions callable from frontend
-- **Shell Integration**: Open external URLs and files
-- **Window Management**: Configurable window properties
-
-## 🚀 Available Scripts
+### Build for Production
 
 ```bash
-# Frontend
-npm run dev          # Start Next.js development server
-npm run build        # Build Next.js for production
-npm run start        # Start Next.js production server
-
-# Tauri
-npm run tauri:dev    # Start Tauri development
-npm run tauri:build  # Build Tauri for production
-
-# Backend
-cd backend
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-python run.py        # Start FastAPI server
-```
-
-## 🌐 API Endpoints
-
-The FastAPI backend provides these endpoints:
-
-- `GET /` - Welcome message
-- `GET /health` - Health check
-- `GET /docs` - Interactive API documentation
-- `GET /api/users` - List all users
-- `POST /api/users` - Create a new user
-- `GET /api/users/{id}` - Get user by ID
-- `GET /api/messages` - List all messages
-- `POST /api/messages` - Create a new message
-- `GET /api/stats` - Get application statistics
-
-## 🔒 Security Features
-
-- CORS configuration for frontend-backend communication
-- Input validation with Pydantic models
-- Error handling with proper HTTP status codes
-
-## 📦 Building for Production
-
-### Build the Frontend
-
-```bash
-npm run build
-```
-
-### Build the Desktop App
-
-```bash
+# Build the desktop application
 npm run tauri:build
 ```
 
-The built application will be available in `src-tauri/target/release/`.
+The built application will be in `src-tauri/target/release/`.
 
-## 🐛 Troubleshooting
+### Testing
 
-### Common Issues
+```bash
+# Run backend tests
+cd backend
+source .venv/bin/activate
+python -m pytest tests/
 
-1. **Tauri build fails**
+# Run frontend tests
+npm test
+```
 
-   - Ensure Rust is properly installed: `rustc --version`
-   - Check Cargo installation: `cargo --version`
+## Project Structure
 
-2. **Python backend won't start**
+```
+├── src/                    # Next.js frontend
+│   ├── app/               # App router pages
+│   └── components/        # React components
+├── backend/               # FastAPI backend
+│   ├── models/           # Database models
+│   ├── routers/          # API routes
+│   └── services/         # Business logic
+├── src-tauri/            # Tauri desktop app
+└── scripts/              # Build and utility scripts
+```
 
-   - Verify Python version: `python --version`
-   - Check virtual environment activation
-   - Install dependencies: `pip install -r requirements.txt`
+## License
 
-3. **Frontend build issues**
-
-   - Clear Next.js cache: `rm -rf .next`
-   - Reinstall dependencies: `rm -rf node_modules && npm install`
-
-4. **CORS errors**
-   - Ensure backend is running on port 8000
-   - Check CORS configuration in `backend/main.py`
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📄 License
-
-This project is open source and available under the [MIT License](LICENSE).
-
-## 🙏 Acknowledgments
-
-- [Tauri](https://tauri.app/) - For the desktop framework
-- [Next.js](https://nextjs.org/) - For the React framework
-- [FastAPI](https://fastapi.tiangolo.com/) - For the Python backend
-- [Tailwind CSS](https://tailwindcss.com/) - For the styling framework
-
-## 📞 Support
-
-If you encounter any issues or have questions:
-
-1. Check the troubleshooting section above
-2. Search existing issues
-3. Create a new issue with detailed information
-
----
-
-Happy coding! 🎉
+MIT License - see LICENSE file for details.
