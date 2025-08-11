@@ -8,6 +8,7 @@ Claude Code, suitable for consumption by other modules.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import sys
 from typing import AsyncGenerator, Dict, List, Optional, Tuple
@@ -21,6 +22,8 @@ except Exception:  # pragma: no cover
     )
     raise
 
+from config import settings
+
 # Import prompt generation utilities
 from .claude_prompts import (
     SYSTEM_PROMPT,
@@ -29,6 +32,8 @@ from .claude_prompts import (
     ClaudeOutputType,
     build_vocab_prompt,
 )
+
+logger = logging.getLogger("codeverse.claude")
 
 
 async def _query_claude_stream(
@@ -74,17 +79,23 @@ async def _query_claude_stream(
             err_text = getattr(message, "error", None)
             if err_text:
                 print(f"Error: {err_text}", file=sys.stderr, flush=True)
+                if settings.DEBUG:
+                    logger.error("claude.error cwd=%s err=%s", working_directory, err_text)
             continue
 
         if message_type_name == "ResultMessage":
             delta_text = getattr(message, "delta", None) or getattr(message, "result_delta", None)
             if delta_text:
+                if settings.DEBUG:
+                    logger.debug("claude.delta size=%d", len(delta_text))
                 saw_any_delta = True
                 yield delta_text
                 continue
 
             result_text = getattr(message, "result", None)
             if result_text and not saw_any_delta:
+                if settings.DEBUG:
+                    logger.debug("claude.result size=%d", len(result_text))
                 yield result_text
 
 
@@ -170,14 +181,14 @@ async def generate_plan(
                 # Skip any preamble content - only emit content AFTER we see section headers
                 # This ensures we don't incorrectly categorize content that appears before "# Plan name"
                 current_type = first_type
-                
+
                 # Skip past the header itself, not just to where it starts
                 header_text = None
                 for section in om.get_all_sections():
                     if ClaudeOutputType(section.name) == first_type:
                         header_text = section.header
                         break
-                
+
                 if header_text:
                     header_end_idx = first_idx + len(header_text)
                     buffer = buffer[header_end_idx:]
@@ -211,13 +222,13 @@ async def generate_plan(
                     if ClaudeOutputType(section.name) == next_type:
                         header_text = section.header
                         break
-                
+
                 if header_text:
                     header_end_idx = next_idx + len(header_text)
                     buffer = buffer[header_end_idx:]
                 else:
                     buffer = buffer[next_idx:]
-                    
+
                 current_type = next_type
                 continue
             else:
@@ -287,6 +298,3 @@ async def get_relevant_vocabulary(
         "relevent_files": relevant_files,
         "bespoke_terms": relevant_terms,
     }
-
-
-

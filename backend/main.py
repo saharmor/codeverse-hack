@@ -1,3 +1,6 @@
+import json
+import logging
+import time
 from datetime import datetime
 from typing import List
 
@@ -24,6 +27,10 @@ app = FastAPI(
     version=settings.VERSION,
 )
 
+# Configure logging early
+logging.basicConfig(level=getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO))
+logger = logging.getLogger("codeverse.api")
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -32,6 +39,52 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# Request/response logging middleware (safe for streaming)
+@app.middleware("http")
+async def log_requests(request, call_next):
+    start_time = time.perf_counter()
+    method = request.method
+    path = request.url.path
+
+    # Avoid logging huge/multipart bodies and audio
+    should_log_body = method in {"POST", "PUT", "PATCH"} and "transcribe" not in path and "upload" not in path
+
+    body_preview = None
+    if should_log_body:
+        try:
+            raw = await request.body()  # Starlette caches body after first read
+            if raw:
+                # Try to pretty-print JSON; otherwise keep as string
+                try:
+                    parsed = json.loads(raw.decode("utf-8"))
+                    body_preview = json.dumps(parsed)[:800]
+                except Exception:
+                    body_preview = raw.decode("utf-8", errors="ignore")[:800]
+        except Exception as err:
+            body_preview = f"<failed to read body: {err}>"
+
+    logger.info(
+        "HTTP %s %s%s",
+        method,
+        path,
+        f" body={body_preview}" if body_preview else "",
+    )
+
+    response = await call_next(request)
+
+    duration_ms = int((time.perf_counter() - start_time) * 1000)
+    logger.info(
+        "HTTP %s %s -> %s (%d ms, content-type=%s)",
+        method,
+        path,
+        response.status_code,
+        duration_ms,
+        response.headers.get("content-type", "-"),
+    )
+    return response
+
 
 # Include routers
 app.include_router(repositories.router)
