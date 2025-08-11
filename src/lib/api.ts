@@ -147,8 +147,8 @@ export class ApiClient {
   }
 
   async updatePlanVersion(
-    planId: string, 
-    version: number, 
+    planId: string,
+    version: number,
     payload: { content?: any }
   ): Promise<ApiResponse<any>> {
     return this.request(`/api/plans/${planId}/versions/${version}`, {
@@ -201,6 +201,8 @@ export class ApiClient {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        // Hint server that we expect an event stream
+        "Accept": "text/event-stream",
       },
       body: JSON.stringify(payload),
     })
@@ -215,23 +217,22 @@ export class ApiClient {
       }
 
       const decoder = new TextDecoder();
+      let buffer = ""; // Buffer to hold partial SSE frames across reads
 
       try {
         while (true) {
           const { done, value } = await reader.read();
 
           if (done) {
-            break;
-          }
-
-          const chunk = decoder.decode(value);
-          const lines = chunk.split('\n');
-
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const jsonStr = line.slice(6); // Remove 'data: '
-                if (jsonStr.trim()) {
+            // Flush any trailing buffered event if present
+            if (buffer.trim().length > 0) {
+              const events = buffer.split('\n\n');
+              for (const evt of events) {
+                const dataLine = evt.split('\n').find((l) => l.startsWith('data:'));
+                if (!dataLine) continue;
+                const jsonStr = dataLine.slice(5).trim().replace(/^:\s*/, '');
+                if (!jsonStr) continue;
+                try {
                   const data = JSON.parse(jsonStr);
                   if (data.type === 'complete') {
                     onComplete();
@@ -242,10 +243,46 @@ export class ApiClient {
                   } else {
                     onMessage(data);
                   }
+                } catch (parseError) {
+                  // Ignore final partial parse errors
                 }
-              } catch (parseError) {
-                console.warn('Failed to parse SSE line:', line, parseError);
               }
+            }
+            break;
+          }
+
+          // Append decoded content to buffer (use streaming decode to avoid breaking multi-byte chars)
+          buffer += decoder.decode(value, { stream: true });
+
+          // Process complete SSE events separated by two newlines
+          let sepIndex: number;
+          while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
+            const eventBlock = buffer.slice(0, sepIndex);
+            buffer = buffer.slice(sepIndex + 2);
+
+            // Join all data lines (support multi-line data per SSE spec)
+            const dataLines = eventBlock
+              .split('\n')
+              .filter((l) => l.startsWith('data:'))
+              .map((l) => l.slice(5).trimStart());
+
+            if (dataLines.length === 0) continue;
+            const jsonPayload = dataLines.join('\n').trim();
+            if (!jsonPayload) continue;
+
+            try {
+              const data = JSON.parse(jsonPayload);
+              if (data.type === 'complete') {
+                onComplete();
+                return;
+              } else if (data.type === 'error') {
+                onError(new Error(data.message));
+                return;
+              } else {
+                onMessage(data);
+              }
+            } catch (err) {
+              console.warn('Failed to parse SSE event:', jsonPayload, err);
             }
           }
         }
