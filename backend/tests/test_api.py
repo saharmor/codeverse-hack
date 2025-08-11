@@ -91,7 +91,12 @@ def test_api_endpoints():
     print("\n6. Testing plan version creation...")
     version_data = {
         "plan_id": plan_id,
-        "content": "# Authentication Feature Plan\n\n## Steps\n- Research authentication libraries\n- Design user model\n- Implement login/logout endpoints\n- Add password hashing\n- Create frontend login form\n\n## Estimated Time\n5 days\n\n## Dependencies\n- database\n- frontend framework",
+        "content": (
+            "# Authentication Feature Plan\n\n## Steps\n- Research authentication libraries\n"
+            "- Design user model\n- Implement login/logout endpoints\n- Add password hashing\n"
+            "- Create frontend login form\n\n## Estimated Time\n5 days\n\n## Dependencies\n"
+            "- database\n- frontend framework"
+        ),
         "version": 1,
     }
     response = requests.post(f"{BASE_URL}/api/plans/{plan_id}/plan_versions", json=version_data)

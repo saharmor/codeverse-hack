@@ -121,6 +121,3 @@ async def delete_plan(plan_id: str, db: AsyncSession = Depends(get_db)):
     await db.delete(plan)
     await db.commit()
     return {"message": "Plan deleted successfully"}
-
-
-

@@ -138,7 +138,14 @@ li {
                 "target_branch": "main",
                 "plan_versions": [
                     {
-                        "content": "# Dark Mode Implementation Plan\n\n## Overview\nAdd a dark mode toggle that switches between light and dark themes\n\n## Requirements\n- Toggle button in header\n- Dark theme CSS variables\n- Persist theme preference in localStorage\n\n## Implementation Steps\n1. Create theme context\n2. Add CSS variables for dark/light themes\n3. Implement toggle component\n4. Add localStorage persistence",
+                        "content": (
+                            "# Dark Mode Implementation Plan\n\n## Overview\n"
+                            "Add a dark mode toggle that switches between light and dark themes\n\n"
+                            "## Requirements\n- Toggle button in header\n- Dark theme CSS variables\n"
+                            "- Persist theme preference in localStorage\n\n## Implementation Steps\n"
+                            "1. Create theme context\n2. Add CSS variables for dark/light themes\n"
+                            "3. Implement toggle component\n4. Add localStorage persistence"
+                        ),
                     }
                 ],
                 "chat_messages": [
@@ -150,21 +157,26 @@ li {
                         "role": "assistant",
                         "type": "clarifying_questions",
                         "content": (
-                            "1. Do you want the dark mode toggle to be in the header, sidebar, or settings panel?\n"
+                            "1. Do you want the dark mode toggle to be in the header, sidebar, "
+                            "or settings panel?\n"
                             "2. Should the theme preference be saved in localStorage or in a user profile?\n"
                             "3. Are there specific colors or design tokens you'd prefer for the dark theme?\n"
                             "4. Do you need the dark mode to respect the user's system theme preference?\n"
                             "5. Should the transition between themes be instant or animated?"
                         ),
                     },
-                    {"role": "user", "content": "Put the toggle in the header and save to localStorage. Use system colors."},
+                    {
+                        "role": "user",
+                        "content": ("Put the toggle in the header and save to localStorage. " "Use system colors."),
+                    },
                     {
                         "role": "assistant",
                         "type": "clarifying_questions",
                         "content": (
                             "1. Should the toggle be a simple button, switch, or icon?\n"
                             "2. How should incomplete vs completed todos look different in dark mode?\n"
-                            "3. Do you want to support custom themes beyond just light/dark in the future?"
+                            "3. Do you want to support custom themes beyond just light/dark "
+                            "in the future?"
                         ),
                     },
                 ],
@@ -175,7 +187,12 @@ li {
                 "target_branch": "feature-auth",
                 "plan_versions": [
                     {
-                        "content": "# User Authentication Implementation\n\n## Steps\n1. Set up authentication context\n2. Create login/register forms\n3. Implement JWT token handling\n4. Add protected routes\n5. Connect user-specific todos",
+                        "content": (
+                            "# User Authentication Implementation\n\n## Steps\n"
+                            "1. Set up authentication context\n2. Create login/register forms\n"
+                            "3. Implement JWT token handling\n4. Add protected routes\n"
+                            "5. Connect user-specific todos"
+                        ),
                     }
                 ],
                 "chat_messages": [
@@ -314,7 +331,13 @@ if __name__ == '__main__':
                 "target_branch": "main",
                 "plan_versions": [
                     {
-                        "content": "# Machine Learning Integration\n\n## Overview\nAdd basic ML capabilities including clustering, classification, and regression\n\n## Features\n- K-means clustering\n- Linear regression\n- Data preprocessing utilities\n- Model evaluation metrics",
+                        "content": (
+                            "# Machine Learning Integration\n\n## Overview\n"
+                            "Add basic ML capabilities including clustering, classification, "
+                            "and regression\n\n## Features\n- K-means clustering\n"
+                            "- Linear regression\n- Data preprocessing utilities\n"
+                            "- Model evaluation metrics"
+                        ),
                     }
                 ],
                 "chat_messages": [
@@ -326,8 +349,10 @@ if __name__ == '__main__':
                         "role": "assistant",
                         "type": "clarifying_questions",
                         "content": (
-                            "1. What types of ML tasks are you most interested in: classification, regression, clustering, or dimensionality reduction?\n"
-                            "2. Do you want supervised learning (with labeled training data) or unsupervised learning capabilities?\n"
+                            "1. What types of ML tasks are you most interested in: classification, "
+                            "regression, clustering, or dimensionality reduction?\n"
+                            "2. Do you want supervised learning (with labeled training data) or "
+                            "unsupervised learning capabilities?\n"
                             "3. Should the ML models be pre-trained or trained on the loaded data?\n"
                             "4. Do you need feature engineering tools for data preprocessing?\n"
                             "5. How important is model interpretability vs accuracy for your use case?\n"
@@ -447,7 +472,9 @@ app.listen(PORT, () => {
 module.exports = app;
 """,
             ".env": "PORT=3000\nNODE_ENV=development",
-            "README.md": "# Express API Server\n\nA simple REST API server built with Express.js for user management.",
+            "README.md": (
+                "# Express API Server\n\n" "A simple REST API server built with Express.js for user management."
+            ),
         },
         "plans": [
             {
@@ -456,7 +483,13 @@ module.exports = app;
                 "target_branch": "feature-database",
                 "plan_versions": [
                     {
-                        "content": "# MongoDB Integration Plan\n\n## Steps\n1. Set up MongoDB connection\n2. Create User model with Mongoose\n3. Replace in-memory operations with database queries\n4. Add data validation\n5. Implement error handling for database operations\n6. Add database seeding script",
+                        "content": (
+                            "# MongoDB Integration Plan\n\n## Steps\n"
+                            "1. Set up MongoDB connection\n2. Create User model with Mongoose\n"
+                            "3. Replace in-memory operations with database queries\n"
+                            "4. Add data validation\n5. Implement error handling for database operations\n"
+                            "6. Add database seeding script"
+                        ),
                     }
                 ],
                 "chat_messages": [

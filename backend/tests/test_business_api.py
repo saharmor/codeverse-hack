@@ -71,7 +71,11 @@ def test_plan_generation():
     print("\n3. Creating initial plan version...")
     version_data = {
         "plan_id": plan_id,
-        "content": "# AI Integration Plan\n\n## Overview\nInitial plan for AI integration\n\n## Goals\n- Integrate Claude API for code analysis\n- Create streaming response system\n- Build user interface for AI interactions\n\n## Status\ndraft",
+        "content": (
+            "# AI Integration Plan\n\n## Overview\nInitial plan for AI integration\n\n## Goals\n"
+            "- Integrate Claude API for code analysis\n- Create streaming response system\n"
+            "- Build user interface for AI interactions\n\n## Status\ndraft"
+        ),
         "version": 1,
     }
     response = requests.post(f"{BASE_URL}/api/plans/{plan_id}/plan_versions", json=version_data)
@@ -116,7 +120,12 @@ def test_plan_generation():
             "How should I structure the API endpoints for the AI integration? "
             "I need streaming responses and proper error handling."
         ),
-        "plan_artifact": "Updated plan with specific API requirements\n\n## Requirements\n- Streaming API responses\n- Error handling and retries\n- Authentication for AI services\n- Rate limiting and quota management\n\n## Architecture\nFastAPI + WebSockets + Claude API",
+        "plan_artifact": (
+            "Updated plan with specific API requirements\n\n## Requirements\n"
+            "- Streaming API responses\n- Error handling and retries\n"
+            "- Authentication for AI services\n- Rate limiting and quota management\n\n"
+            "## Architecture\nFastAPI + WebSockets + Claude API"
+        ),
         "chat_messages": [
             {"role": "user", "content": "I want to integrate AI code analysis. What's the best approach?"},
             {
@@ -157,9 +166,11 @@ def test_plan_generation():
                     if line_str.strip():
                         try:
                             data = json.loads(line_str)
-                            if data.get("type") == "chunk":
-                                print(data["content"], end="", flush=True)
+                            # Handle streaming chunk data
+                            if data.get("chunk") and data.get("output_type"):
+                                print(data["chunk"], end="", flush=True)
                                 chunk_count += 1
+                            # Handle completion/error signals
                             elif data.get("type") == "complete":
                                 print("\n" + "-" * 50)
                                 print(f"✅ Plan generation completed ({chunk_count} chunks received)")

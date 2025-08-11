@@ -13,7 +13,7 @@ import sys
 from typing import AsyncGenerator, Dict, List, Optional, Tuple
 
 try:
-    from claude_code_sdk import ClaudeCodeOptions, query
+    from claude_code_sdk import ClaudeCodeOptions, query  # type: ignore[import-not-found]
 except Exception:  # pragma: no cover
     print(
         "Error: Failed to import 'claude_code_sdk'.\nInstall it with: pip install claude-code-sdk",
@@ -170,14 +170,12 @@ async def generate_plan(
                 # Skip any preamble content - only emit content AFTER we see section headers
                 # This ensures we don't incorrectly categorize content that appears before "# Plan name"
                 current_type = first_type
-                
                 # Skip past the header itself, not just to where it starts
                 header_text = None
                 for section in om.get_all_sections():
                     if ClaudeOutputType(section.name) == first_type:
                         header_text = section.header
                         break
-                
                 if header_text:
                     header_end_idx = first_idx + len(header_text)
                     buffer = buffer[header_end_idx:]
@@ -211,13 +209,11 @@ async def generate_plan(
                     if ClaudeOutputType(section.name) == next_type:
                         header_text = section.header
                         break
-                
                 if header_text:
                     header_end_idx = next_idx + len(header_text)
                     buffer = buffer[header_end_idx:]
                 else:
                     buffer = buffer[next_idx:]
-                    
                 current_type = next_type
                 continue
             else:
@@ -287,6 +283,3 @@ async def get_relevant_vocabulary(
         "relevent_files": relevant_files,
         "bespoke_terms": relevant_terms,
     }
-
-
-

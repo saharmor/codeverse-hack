@@ -76,7 +76,7 @@ async def run_iteration(
     async for out_type, chunk in generate_plan_structured(
         project_dir=WORKING_DIRECTORY,
         user_raw_notes=user_raw_notes,
-        prev_clarfying_questions=prev_clarifying_questions,
+        prev_clarifying_questions=prev_clarifying_questions,
         current_plan=current_plan,
     ):
         # Maintain original behavior: accumulate and print raw text
