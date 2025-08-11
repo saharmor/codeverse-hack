@@ -47,6 +47,17 @@
       "python": "${workspaceFolder}/backend/.venv/bin/python",
       "args": []
     }
+    ,
+    {
+      "name": "Frontend: Next.js Dev",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "npm run dev",
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "NEXT_TELEMETRY_DISABLED": "1"
+      }
+    }
   ]
 }
 
