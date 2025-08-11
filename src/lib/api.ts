@@ -4,6 +4,11 @@
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+// Timeout configurations
+const DEFAULT_TIMEOUT = 120000; // 2 minutes
+const LONG_OPERATION_TIMEOUT = 300000; // 5 minutes for plan generation
+const STREAMING_TIMEOUT = 600000; // 10 minutes for streaming operations
+
 export interface ApiResponse<T = any> {
   data?: T;
   error?: string;
@@ -20,17 +25,27 @@ export class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    timeout: number = DEFAULT_TIMEOUT
   ): Promise<ApiResponse<T>> {
     try {
       const url = `${this.baseUrl}${endpoint}`;
+
+      // Create AbortController for timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout);
+
       const response = await fetch(url, {
         headers: {
           "Content-Type": "application/json",
           ...(options.headers || {}),
         },
+        signal: controller.signal,
         ...options,
       });
+
+      // Clear timeout since request completed
+      clearTimeout(timeoutId);
 
       // Try to parse JSON for both success and error responses
       const contentType = response.headers.get("content-type") || "";
@@ -49,8 +64,11 @@ export class ApiClient {
           }
         }
 
-        const detail = parsed?.detail || parsed?.message || parsed?.error || text;
-        const errorMessage = `HTTP ${response.status}${detail ? `: ${detail}` : ""}`;
+        const detail =
+          parsed?.detail || parsed?.message || parsed?.error || text;
+        const errorMessage = `HTTP ${response.status}${
+          detail ? `: ${detail}` : ""
+        }`;
 
         return {
           error: errorMessage,
@@ -74,8 +92,15 @@ export class ApiClient {
         status: response.status,
       };
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return {
+          error: `Request timed out after ${timeout}ms`,
+          status: 0,
+        };
+      }
       return {
-        error: error instanceof Error ? error.message : "Unknown error occurred",
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
         status: 0,
       };
     }
@@ -114,18 +139,16 @@ export class ApiClient {
 
   async createPlan(
     repoId: string,
-    payload: {
-      name: string;
-      description?: string | null;
-      target_branch: string;
-      version?: number;
-      status?: string;
-    }
+    payload: { content?: any }
   ): Promise<ApiResponse<any>> {
-    return this.request(`/api/repositories/${repoId}/plans`, {
-      method: "POST",
-      body: JSON.stringify({ ...payload, repository_id: repoId }),
-    });
+    return this.request(
+      `/api/repositories/${repoId}/plans`,
+      {
+        method: "POST",
+        body: JSON.stringify({ ...payload, repository_id: repoId }),
+      },
+      LONG_OPERATION_TIMEOUT
+    );
   }
 
   async deletePlan(planId: string): Promise<ApiResponse> {
@@ -151,10 +174,14 @@ export class ApiClient {
     version: number,
     payload: { content?: any }
   ): Promise<ApiResponse<any>> {
-    return this.request(`/api/plans/${planId}/versions/${version}`, {
-      method: "PUT",
-      body: JSON.stringify(payload),
-    });
+    return this.request(
+      `/api/plans/${planId}/versions/${version}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      },
+      LONG_OPERATION_TIMEOUT
+    );
   }
 
   // Chat
@@ -187,14 +214,21 @@ export class ApiClient {
     planId: string,
     payload: {
       user_message: string;
-      plan_artifact?: any;
-      chat_messages?: any[];
+      prev_clarifying_questions?: string[];
+      current_plan?: string;
     },
     onMessage: (data: any) => void,
-    onError: (error: any) => void,
-    onComplete: () => void
+    onComplete: () => void,
+    onError: (error: Error) => void
   ): () => void {
     const url = `${this.baseUrl}/api/business/plans/${planId}/generate`;
+
+    // Create AbortController for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => {
+      controller.abort();
+      onError(new Error(`Request timed out after ${STREAMING_TIMEOUT}ms`));
+    }, STREAMING_TIMEOUT);
 
     // Make the POST request and handle the streaming response
     fetch(url, {
@@ -202,100 +236,116 @@ export class ApiClient {
       headers: {
         "Content-Type": "application/json",
         // Hint server that we expect an event stream
-        "Accept": "text/event-stream",
+        Accept: "text/event-stream",
       },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     })
-    .then(async (response) => {
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw new Error('No response body reader available');
-      }
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw new Error("No response body reader available");
+        }
 
-      const decoder = new TextDecoder();
-      let buffer = ""; // Buffer to hold partial SSE frames across reads
+        const decoder = new TextDecoder();
+        let buffer = ""; // Buffer to hold partial SSE frames across reads
 
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
 
-          if (done) {
-            // Flush any trailing buffered event if present
-            if (buffer.trim().length > 0) {
-              const events = buffer.split('\n\n');
-              for (const evt of events) {
-                const dataLine = evt.split('\n').find((l) => l.startsWith('data:'));
-                if (!dataLine) continue;
-                const jsonStr = dataLine.slice(5).trim().replace(/^:\s*/, '');
-                if (!jsonStr) continue;
-                try {
-                  const data = JSON.parse(jsonStr);
-                  if (data.type === 'complete') {
-                    onComplete();
-                    return;
-                  } else if (data.type === 'error') {
-                    onError(new Error(data.message));
-                    return;
-                  } else {
-                    onMessage(data);
+            if (done) {
+              // Flush any trailing buffered event if present
+              if (buffer.trim().length > 0) {
+                const events = buffer.split("\n\n");
+                for (const evt of events) {
+                  const dataLine = evt
+                    .split("\n")
+                    .find((l) => l.startsWith("data:"));
+                  if (!dataLine) continue;
+                  const jsonStr = dataLine.slice(5).trim().replace(/^:\s*/, "");
+                  if (!jsonStr) continue;
+                  try {
+                    const data = JSON.parse(jsonStr);
+                    if (data.type === "complete") {
+                      clearTimeout(timeoutId);
+                      onComplete();
+                      return;
+                    } else if (data.type === "error") {
+                      clearTimeout(timeoutId);
+                      onError(new Error(data.message));
+                      return;
+                    } else {
+                      onMessage(data);
+                    }
+                  } catch (parseError) {
+                    // Ignore final partial parse errors
                   }
-                } catch (parseError) {
-                  // Ignore final partial parse errors
                 }
               }
+              break;
             }
-            break;
-          }
 
-          // Append decoded content to buffer (use streaming decode to avoid breaking multi-byte chars)
-          buffer += decoder.decode(value, { stream: true });
+            // Append decoded content to buffer (use streaming decode to avoid breaking multi-byte chars)
+            buffer += decoder.decode(value, { stream: true });
 
-          // Process complete SSE events separated by two newlines
-          let sepIndex: number;
-          while ((sepIndex = buffer.indexOf('\n\n')) !== -1) {
-            const eventBlock = buffer.slice(0, sepIndex);
-            buffer = buffer.slice(sepIndex + 2);
+            // Process complete SSE events separated by two newlines
+            let sepIndex: number;
+            while ((sepIndex = buffer.indexOf("\n\n")) !== -1) {
+              const eventBlock = buffer.slice(0, sepIndex);
+              buffer = buffer.slice(sepIndex + 2);
 
-            // Join all data lines (support multi-line data per SSE spec)
-            const dataLines = eventBlock
-              .split('\n')
-              .filter((l) => l.startsWith('data:'))
-              .map((l) => l.slice(5).trimStart());
+              // Join all data lines (support multi-line data per SSE spec)
+              const dataLines = eventBlock
+                .split("\n")
+                .filter((l) => l.startsWith("data:"))
+                .map((l) => l.slice(5).trimStart());
 
-            if (dataLines.length === 0) continue;
-            const jsonPayload = dataLines.join('\n').trim();
-            if (!jsonPayload) continue;
+              if (dataLines.length === 0) continue;
+              const jsonPayload = dataLines.join("\n").trim();
+              if (!jsonPayload) continue;
 
-            try {
-              const data = JSON.parse(jsonPayload);
-              if (data.type === 'complete') {
-                onComplete();
-                return;
-              } else if (data.type === 'error') {
-                onError(new Error(data.message));
-                return;
-              } else {
-                onMessage(data);
+              try {
+                const data = JSON.parse(jsonPayload);
+                if (data.type === "complete") {
+                  clearTimeout(timeoutId);
+                  onComplete();
+                  return;
+                } else if (data.type === "error") {
+                  clearTimeout(timeoutId);
+                  onError(new Error(data.message));
+                  return;
+                } else {
+                  onMessage(data);
+                }
+              } catch (err) {
+                console.warn("Failed to parse SSE event:", jsonPayload, err);
               }
-            } catch (err) {
-              console.warn('Failed to parse SSE event:', jsonPayload, err);
             }
           }
+        } finally {
+          reader.releaseLock();
+          clearTimeout(timeoutId);
         }
-      } finally {
-        reader.releaseLock();
-      }
-    })
-    .catch(onError);
+      })
+      .catch((error) => {
+        clearTimeout(timeoutId);
+        if (error.name === "AbortError") {
+          onError(new Error(`Request timed out after ${STREAMING_TIMEOUT}ms`));
+        } else {
+          onError(error);
+        }
+      });
 
     // Return a cleanup function
     return () => {
-      // In a real implementation, you might want to track and cancel the fetch
-      console.log('Cleanup called for plan generation');
+      clearTimeout(timeoutId);
+      controller.abort();
+      console.log("Cleanup called for plan generation");
     };
   }
 }
