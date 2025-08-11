@@ -241,6 +241,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     setChatMessages(prev => [...prev, userMsg])
 
     let assistantResponse = ''
+    let planContent = ''
     const assistantMsgId = `assistant-${Date.now()}`
 
     // Get current plan artifact content as string
@@ -288,12 +289,63 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       },
       // onMessage callback
       (data) => {
-        if (data.type === 'name_update') {
+        console.log('Received streaming data:', data)
+        
+        if (data.output_type === 'plan_name') {
           // Update plan name dynamically
+          updatePlanName(selectedPlanId, data.chunk.trim())
+        } else if (data.output_type === 'clarifying_questions') {
+          // Add to assistant response in chat
+          assistantResponse += data.chunk
+          // Update or add assistant message
+          setChatMessages(prev => {
+            const existingIndex = prev.findIndex(msg => msg.id === assistantMsgId)
+            if (existingIndex >= 0) {
+              const newMessages = [...prev]
+              newMessages[existingIndex] = {
+                ...newMessages[existingIndex],
+                content: assistantResponse
+              }
+              return newMessages
+            } else {
+              return [...prev, {
+                id: assistantMsgId,
+                role: 'assistant' as const,
+                content: assistantResponse,
+                timestamp: Date.now()
+              }]
+            }
+          })
+        } else if (data.output_type === 'plan') {
+          // Add to plan content for artifact
+          planContent += data.chunk
+          // Update or create new plan artifact
+          if (artifacts.length > 0) {
+            const latestArtifact = artifacts.slice().sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))[0]
+            setArtifacts(prev => prev.map(a => 
+              a.id === latestArtifact.id 
+                ? { ...a, content: planContent }
+                : a
+            ))
+          } else {
+            // Create new artifact if none exists
+            const newArtifact: PlanArtifact = {
+              id: `artifact-${Date.now()}`,
+              planId: selectedPlanId,
+              content: planContent,
+              artifactType: 'plan_version',
+              createdAt: new Date().toISOString(),
+              version: 1
+            }
+            setArtifacts(prev => [newArtifact, ...prev])
+          }
+        }
+        
+        // Handle legacy format for backwards compatibility
+        if (data.type === 'name_update') {
           updatePlanName(selectedPlanId, data.name)
         } else if (data.type === 'chunk') {
           assistantResponse += data.content
-          // Update or add assistant message
           setChatMessages(prev => {
             const existingIndex = prev.findIndex(msg => msg.id === assistantMsgId)
             if (existingIndex >= 0) {
