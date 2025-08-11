@@ -290,28 +290,35 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       // onMessage callback
       (data) => {
         console.log('Received streaming data:', data)
+        console.log('Data output_type:', data.output_type, 'Data chunk:', data.chunk)
         
         if (data.output_type === 'plan_name') {
-          // Update plan name dynamically
-          updatePlanName(selectedPlanId, data.chunk.trim())
-        } else if (data.output_type === 'clarifying_questions') {
+          // Update plan name dynamically - clean up newlines and extra whitespace
+          const cleanName = data.chunk.replace(/\n/g, '').trim()
+          if (cleanName) {
+            updatePlanName(selectedPlanId, cleanName)
+            console.log('Updated plan name to:', cleanName)
+          }
+        } else if (data.output_type === 'clarify_questions') {
           // Add to assistant response in chat
           assistantResponse += data.chunk
+          console.log('Adding clarifying question chunk:', data.chunk, 'Total response:', assistantResponse)
           // Update or add assistant message
           setChatMessages(prev => {
             const existingIndex = prev.findIndex(msg => msg.id === assistantMsgId)
+            const currentContent = assistantResponse
             if (existingIndex >= 0) {
               const newMessages = [...prev]
               newMessages[existingIndex] = {
                 ...newMessages[existingIndex],
-                content: assistantResponse
+                content: currentContent
               }
               return newMessages
             } else {
               return [...prev, {
                 id: assistantMsgId,
                 role: 'assistant' as const,
-                content: assistantResponse,
+                content: currentContent,
                 timestamp: Date.now()
               }]
             }
