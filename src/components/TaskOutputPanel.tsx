@@ -29,13 +29,8 @@ function ArtifactViewer({ artifact, onContentChange }: { artifact: any, onConten
     }
 
     return (
-      <div className="space-y-4 h-full flex flex-col">
-        {artifact.version && (
-          <div className="text-xs text-gray-500 bg-gray-50 px-3 py-1 rounded-md inline-block">
-            Version {artifact.version}
-          </div>
-        )}
-        <div className="flex-1 min-h-0">
+      <div className="h-full">
+        <div className="h-full">
           <MarkdownEditor 
             value={textContent}
             onChange={onContentChange}
@@ -99,13 +94,8 @@ function ArtifactViewer({ artifact, onContentChange }: { artifact: any, onConten
   const jsonMarkdown = '```json\n' + JSON.stringify(content, null, 2) + '\n```'
   
   return (
-    <div className="space-y-4 h-full flex flex-col">
-      {artifact.version && (
-        <div className="text-xs text-gray-500 bg-gray-50 px-3 py-1 rounded-md inline-block">
-          Version {artifact.version}
-        </div>
-      )}
-      <div className="flex-1 min-h-0">
+    <div className="h-full">
+      <div className="h-full">
         <MarkdownEditor 
           value={jsonMarkdown}
           onChange={onContentChange}

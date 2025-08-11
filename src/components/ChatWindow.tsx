@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useMemo, useRef, useState, useEffect } from 'react'
-import { ChevronLeft, ChevronRight, RefreshCw, Send, Mic } from 'lucide-react'
+import { Send, Mic } from 'lucide-react'
 import { useAppContext } from '../lib/AppContext'
 import VoiceRecorder from './VoiceRecorder'
 import LoadingAnimation from './LoadingAnimation'
@@ -77,13 +77,8 @@ export default function ChatWindow() {
   return (
     <section className="w-full h-full min-h-0 flex flex-col bg-white border-l border-gray-100" role="complementary">
       {/* Header */}
-      <header className="shrink-0 border-b border-gray-100 px-4 py-3 flex items-center justify-between">
-        <h2 className="text-sm font-medium text-gray-900">{selectedPlan ? `${selectedPlan.name} – Chat` : 'Chat'}</h2>
-        <div className="flex items-center gap-2">
-          <button aria-label="Back" className="p-2 rounded-md hover:bg-gray-100 text-gray-600"><ChevronLeft className="w-4 h-4" /></button>
-          <button aria-label="Forward" className="p-2 rounded-md hover:bg-gray-100 text-gray-600"><ChevronRight className="w-4 h-4" /></button>
-          <button aria-label="Refresh" className="p-2 rounded-md hover:bg-gray-100 text-gray-600"><RefreshCw className="w-4 h-4" /></button>
-        </div>
+      <header className="shrink-0 border-b border-gray-100 px-4 py-3">
+        <h2 className="text-sm font-medium text-gray-900">Clarifying questions</h2>
       </header>
 
       {/* Messages */}
@@ -137,9 +132,6 @@ export default function ChatWindow() {
           </div>
           {/* Right side controls column removed; send is in second row */}
         </div>
-        <p className="mt-2 text-[11px] text-gray-500">
-          Messages may be inaccurate. Verify important information.
-        </p>
       </footer>
     </section>
   )
