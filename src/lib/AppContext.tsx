@@ -245,10 +245,10 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
     const assistantMsgId = `assistant-${Date.now()}`
 
     // Get current plan artifact content as string
-    const currentPlanArtifact = artifacts.length > 0 
+    const currentPlanArtifact = artifacts.length > 0
       ? artifacts.slice().sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))[0]
       : null
-    
+
     let planArtifactString = ''
     if (currentPlanArtifact?.content) {
       const content = currentPlanArtifact.content
@@ -291,7 +291,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
       (data) => {
         console.log('Received streaming data:', data)
         console.log('Data output_type:', data.output_type, 'Data chunk:', data.chunk)
-        
+
         if (data.output_type === 'plan_name') {
           // Update plan name dynamically - clean up newlines and extra whitespace
           const cleanName = data.chunk.replace(/\n/g, '').trim()
@@ -329,9 +329,9 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
           // Update or create new plan artifact
           if (artifacts.length > 0) {
             const latestArtifact = artifacts.slice().sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))[0]
-            setArtifacts(prev => prev.map(a => 
-              a.id === latestArtifact.id 
-                ? { ...a, content: planContent }
+            setArtifacts(prev => prev.map(a =>
+              a.id === latestArtifact.id
+                ? { ...a, content: { markdown: planContent } }
                 : a
             ))
           } else {
@@ -339,7 +339,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
             const newArtifact: PlanArtifact = {
               id: `artifact-${Date.now()}`,
               planId: selectedPlanId,
-              content: planContent,
+              content: { markdown: planContent },
               artifactType: 'plan_version',
               createdAt: new Date().toISOString(),
               version: 1
@@ -347,7 +347,7 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
             setArtifacts(prev => [newArtifact, ...prev])
           }
         }
-        
+
         // Handle legacy format for backwards compatibility
         if (data.type === 'name_update') {
           updatePlanName(selectedPlanId, data.name)
@@ -408,9 +408,9 @@ export function AppContextProvider({ children }: { children: React.ReactNode }) 
 
       if (res.data) {
         // Update local state
-        setArtifacts(prev => prev.map(a => 
-          a.id === artifactId 
-            ? { ...a, content: content }
+        setArtifacts(prev => prev.map(a =>
+          a.id === artifactId
+            ? { ...a, content: { markdown: content } }
             : a
         ))
       } else if (res.error) {
